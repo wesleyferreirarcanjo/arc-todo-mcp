@@ -20,7 +20,7 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 | Application UUID | `qv9bek5he3ns8upu71rphbrc` |
 | Repository | [wesleyferreirarcanjo/arc-todo-mcp](https://github.com/wesleyferreirarcanjo/arc-todo-mcp) |
 | Branch | `main` |
-| Build pack | Nixpacks |
+| Build pack | Dockerfile |
 | Public URL | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io` |
 | MCP endpoint | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
 | Health check | `GET /health` → `{ "status": "ok" }` |
@@ -29,8 +29,7 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 
 | Step | Command |
 | --- | --- |
-| Install | `pip install -e .` |
-| Build | `python -m compileall app` |
+| Build | `docker build -f Dockerfile .` |
 | Start | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
 | Port | `8000` |
 

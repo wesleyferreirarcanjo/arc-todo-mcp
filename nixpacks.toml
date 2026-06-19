@@ -1,6 +1,0 @@
-# Let Nixpacks install dependencies from pyproject.toml (custom install overrides pip setup).
-[phases.build]
-cmds = ["python -m compileall app"]
-
-[start]
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
