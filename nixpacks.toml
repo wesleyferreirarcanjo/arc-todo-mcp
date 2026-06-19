@@ -1,6 +1,4 @@
-[phases.install]
-cmds = ["pip install -e ."]
-
+# Let Nixpacks install dependencies from pyproject.toml (custom install overrides pip setup).
 [phases.build]
 cmds = ["python -m compileall app"]
 

@@ -17,11 +17,12 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 | Field | Value |
 | --- | --- |
 | Coolify resource name | `arc-todo-mcp` |
-| Application UUID | *(fill after creating the Coolify resource)* |
+| Application UUID | `qv9bek5he3ns8upu71rphbrc` |
 | Repository | [wesleyferreirarcanjo/arc-todo-mcp](https://github.com/wesleyferreirarcanjo/arc-todo-mcp) |
 | Branch | `main` |
 | Build pack | Nixpacks |
-| Public URL | *(fill after creating the Coolify resource)* |
+| Public URL | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io` |
+| MCP endpoint | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
 | Health check | `GET /health` → `{ "status": "ok" }` |
 
 ### Build / run
@@ -68,5 +69,5 @@ Secrets are stored in Coolify only. Do not commit real values.
 
 - Disabled tools are omitted from MCP discovery after the MCP service restarts.
 - Tool settings are stored in PostgreSQL through `arc-todo-api`, not in this service.
-- Git source uses the Coolify deploy key (`private_key_uuid`: `lms2y9fjpybdznft4t7uf3td`). Repository is private.
+- Git source uses the Coolify deploy key (`private_key_uuid`: `lms2y9fjpybdznft4t7uf3td`). Repository is public (same as API/web).
 - See [../arc-todo-api/coolify.md](../arc-todo-api/coolify.md) and [../arc-todo-web/coolify.md](../arc-todo-web/coolify.md).
