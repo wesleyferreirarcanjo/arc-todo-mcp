@@ -67,12 +67,9 @@ def build_mcp_server(enabled_keys: set[str]) -> tuple[Server, StreamableHTTPSess
 
 
 def build_mcp_asgi_app(session_manager: StreamableHTTPSessionManager) -> Starlette:
-    from mcp.server.streamable_http import StreamableHTTPASGIApp
+    from mcp.server.fastmcp.server import StreamableHTTPASGIApp
 
-    return Starlette(
-        routes=[Mount("/", app=StreamableHTTPASGIApp(session_manager))],
-        lifespan=lambda _: session_manager.run(),
-    )
+    return Starlette(routes=[Mount("/", app=StreamableHTTPASGIApp(session_manager))])
 
 
 @contextlib.asynccontextmanager
