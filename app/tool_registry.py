@@ -1,0 +1,179 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Callable, Coroutine
+
+from pydantic import BaseModel, Field
+
+
+@dataclass(frozen=True)
+class ToolDefinition:
+    key: str
+    group: str
+    display_name: str
+    description: str
+    default_enabled: bool
+    sort_order: int
+    input_model: type[BaseModel] | None
+    handler: Callable[..., Coroutine[Any, Any, str]]
+
+
+MCP_TOOL_REGISTRY: list[ToolDefinition] = []
+
+
+def register_tool(
+    *,
+    key: str,
+    group: str,
+    display_name: str,
+    description: str,
+    default_enabled: bool = True,
+    sort_order: int = 0,
+    input_model: type[BaseModel] | None = None,
+) -> Callable[[Callable[..., Coroutine[Any, Any, str]]], Callable[..., Coroutine[Any, Any, str]]]:
+    def decorator(
+        handler: Callable[..., Coroutine[Any, Any, str]],
+    ) -> Callable[..., Coroutine[Any, Any, str]]:
+        MCP_TOOL_REGISTRY.append(
+            ToolDefinition(
+                key=key,
+                group=group,
+                display_name=display_name,
+                description=description,
+                default_enabled=default_enabled,
+                sort_order=sort_order,
+                input_model=input_model,
+                handler=handler,
+            )
+        )
+        return handler
+
+    return decorator
+
+
+def registry_entry_dict(tool: ToolDefinition) -> dict[str, Any]:
+    return {
+        "key": tool.key,
+        "group": tool.group,
+        "displayName": tool.display_name,
+        "description": tool.description,
+        "defaultEnabled": tool.default_enabled,
+        "sortOrder": tool.sort_order,
+    }
+
+
+class EmptyInput(BaseModel):
+    pass
+
+
+class OrganizationIdInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+
+
+class GetOrganizationInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+
+
+class ListProjectsInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+
+
+class GetProjectInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    project_id: str = Field(description="Project UUID")
+
+
+class ListPersonsInput(BaseModel):
+    organization_id: str | None = Field(
+        default=None,
+        description="Optional organization UUID. Omit for global persons.",
+    )
+
+
+class GetPersonInput(BaseModel):
+    organization_id: str | None = Field(
+        default=None,
+        description="Optional organization UUID. Omit for global person lookup.",
+    )
+    person_id: str = Field(description="Person UUID")
+
+
+class ListTasksInput(BaseModel):
+    organization_id: str | None = None
+    project_id: str | None = None
+    status: str | None = Field(default=None, description="todo | in_progress | done")
+    criticity: str | None = Field(
+        default=None,
+        description="low | medium | high | critical",
+    )
+
+
+class ProjectTaskScopeInput(BaseModel):
+    organization_id: str
+    project_id: str
+
+
+class GetTaskInput(ProjectTaskScopeInput):
+    task_id: str
+
+
+class CreateTaskInput(ProjectTaskScopeInput):
+    title: str
+    description: str | None = None
+    status: str = "todo"
+    criticity: str = "medium"
+    due_date: str | None = None
+
+
+class UpdateTaskInput(GetTaskInput):
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    criticity: str | None = None
+    due_date: str | None = None
+
+
+class KnowledgeScopeInput(BaseModel):
+    scope: str = Field(description="general | organization | project | person")
+    organization_id: str | None = None
+    project_id: str | None = None
+    person_id: str | None = None
+    file_name: str | None = None
+    mime_type: str | None = None
+    has_attachments: bool | None = None
+
+
+class KnowledgeEntryInput(KnowledgeScopeInput):
+    knowledge_id: str
+
+
+class CreateKnowledgeInput(KnowledgeScopeInput):
+    title: str
+    content: str
+
+
+class UpdateKnowledgeInput(KnowledgeEntryInput):
+    title: str | None = None
+    content: str | None = None
+
+
+class ListAttachmentsInput(KnowledgeEntryInput):
+    file_name: str | None = None
+    mime_type: str | None = None
+    tag: str | None = None
+
+
+class UploadAttachmentInput(KnowledgeEntryInput):
+    filename: str
+    mime_type: str
+    content_base64: str
+    description: str | None = None
+    tags: str | None = None
+
+
+class DownloadAttachmentInput(KnowledgeEntryInput):
+    attachment_id: str
+
+
+class DeleteAttachmentInput(DownloadAttachmentInput):
+    pass
