@@ -19,7 +19,6 @@ from app.tool_registry import (
     ListPersonsInput,
     ListProjectsInput,
     ListTasksInput,
-    OrganizationIdInput,
     ProjectTaskScopeInput,
     UpdateKnowledgeInput,
     UpdateTaskInput,
