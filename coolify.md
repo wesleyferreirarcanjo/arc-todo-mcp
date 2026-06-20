@@ -40,7 +40,7 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 | API `arc-todo-api` | `lmsx2avrg1k29ex12w6e3gce` | `http://lmsx2avrg1k29ex12w6e3gce.72.60.59.203.sslip.io` |
 | Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | MCP tool settings UI |
 | PostgreSQL `arc-todo-postgres` | `bibl6ncxa3xkph2r8ubmbl4t` | Stores MCP tool settings via API |
-| Chatbot `arc-todo-chatbot` | *(provision in Coolify)* | Shares the same Arc Todo API endpoints |
+| Chatbot `arc-todo-chatbot` | `nyagev0aqp4qow1zri6wise5` | `http://nyagev0aqp4qow1zri6wise5.72.60.59.203.sslip.io` |
 | MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Used by API only |
 
 ## Environment variables (production)
