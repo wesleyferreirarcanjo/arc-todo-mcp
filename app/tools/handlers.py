@@ -5,6 +5,7 @@ import base64
 from app.arc_todo_client import arc_todo_client
 from app.tool_registry import (
     CreateKnowledgeInput,
+    CreateProjectInput,
     CreateTaskInput,
     DeleteAttachmentInput,
     DownloadAttachmentInput,
@@ -105,12 +106,38 @@ async def list_projects(input: ListProjectsInput) -> str:
     return arc_todo_client.format_result(data)
 
 
+def _project_body(input: CreateProjectInput) -> dict[str, str]:
+    body: dict[str, str] = {"name": input.name}
+    if input.description is not None:
+        body["description"] = input.description
+    if input.color is not None:
+        body["color"] = input.color
+    return body
+
+
+@register_tool(
+    key="create_project",
+    group="context",
+    display_name="Create project",
+    description="Create a project in an organization.",
+    sort_order=13,
+    input_model=CreateProjectInput,
+)
+async def create_project(input: CreateProjectInput) -> str:
+    data = await arc_todo_client.request(
+        "POST",
+        f"/organizations/{input.organization_id}/projects",
+        json_body=_project_body(input),
+    )
+    return arc_todo_client.format_result(data)
+
+
 @register_tool(
     key="get_project",
     group="context",
     display_name="Get project",
     description="Fetch one project by organization and project ID.",
-    sort_order=13,
+    sort_order=14,
     input_model=GetProjectInput,
 )
 async def get_project(input: GetProjectInput) -> str:
@@ -126,7 +153,7 @@ async def get_project(input: GetProjectInput) -> str:
     group="context",
     display_name="List persons",
     description="List persons globally or within an organization.",
-    sort_order=14,
+    sort_order=15,
     input_model=ListPersonsInput,
 )
 async def list_persons(input: ListPersonsInput) -> str:
@@ -143,7 +170,7 @@ async def list_persons(input: ListPersonsInput) -> str:
     group="context",
     display_name="Get person",
     description="Fetch one person globally or within an organization.",
-    sort_order=15,
+    sort_order=16,
     input_model=GetPersonInput,
 )
 async def get_person(input: GetPersonInput) -> str:

@@ -78,6 +78,16 @@ class ListProjectsInput(BaseModel):
     organization_id: str = Field(description="Organization UUID")
 
 
+class CreateProjectInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    name: str
+    description: str | None = None
+    color: str | None = Field(
+        default=None,
+        description="Optional hex color (e.g. #8778a3)",
+    )
+
+
 class GetProjectInput(BaseModel):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
