@@ -40,6 +40,7 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 | API `arc-todo-api` | `lmsx2avrg1k29ex12w6e3gce` | `http://lmsx2avrg1k29ex12w6e3gce.72.60.59.203.sslip.io` |
 | Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | MCP tool settings UI |
 | PostgreSQL `arc-todo-postgres` | `bibl6ncxa3xkph2r8ubmbl4t` | Stores MCP tool settings via API |
+| Chatbot `arc-todo-chatbot` | *(provision in Coolify)* | Shares the same Arc Todo API endpoints |
 | MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Used by API only |
 
 ## Environment variables (production)
@@ -63,10 +64,11 @@ Secrets are stored in Coolify only. Do not commit real values.
 4. Deploy `arc-todo-web` so `/settings/mcp-tools` is available.
 5. Configure enabled MCP tools in the web app.
 6. Deploy / restart `arc-todo-mcp` so it loads enabled tools on startup.
+7. Deploy / restart `arc-todo-chatbot` after chatbot settings are configured in the web app (see [../arc-todo-chatbot/coolify.md](../arc-todo-chatbot/coolify.md)).
 
 ## Notes
 
 - Disabled tools are omitted from MCP discovery after the MCP service restarts.
 - Tool settings are stored in PostgreSQL through `arc-todo-api`, not in this service.
 - Git source uses the Coolify deploy key (`private_key_uuid`: `lms2y9fjpybdznft4t7uf3td`). Repository is public (same as API/web).
-- See [../arc-todo-api/coolify.md](../arc-todo-api/coolify.md) and [../arc-todo-web/coolify.md](../arc-todo-web/coolify.md).
+- See [../arc-todo-api/coolify.md](../arc-todo-api/coolify.md), [../arc-todo-web/coolify.md](../arc-todo-web/coolify.md), and [../arc-todo-chatbot/coolify.md](../arc-todo-chatbot/coolify.md).
