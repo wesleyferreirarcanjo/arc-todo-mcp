@@ -205,7 +205,7 @@ def _task_body(input: CreateTaskInput | UpdateTaskInput) -> dict:
     key="list_tasks",
     group="tasks",
     display_name="List tasks",
-    description="List tasks across organizations with optional filters.",
+    description="List tasks across organizations with optional filters including parent_task_id.",
     sort_order=20,
     input_model=ListTasksInput,
 )
@@ -261,7 +261,7 @@ async def get_task(input: GetTaskInput) -> str:
     key="create_task",
     group="tasks",
     display_name="Create task",
-    description="Create a task in a project.",
+    description="Create a task in a project. Optional parent_task_id creates a direct subtask.",
     sort_order=23,
     input_model=CreateTaskInput,
 )
@@ -278,7 +278,7 @@ async def create_task(input: CreateTaskInput) -> str:
     key="update_task",
     group="tasks",
     display_name="Update task",
-    description="Update a task in a project.",
+    description="Update a task in a project. Set parent_task_id to attach as subtask or null to detach.",
     sort_order=24,
     input_model=UpdateTaskInput,
 )
