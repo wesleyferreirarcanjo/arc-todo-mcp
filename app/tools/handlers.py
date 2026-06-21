@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 
 from app.arc_todo_client import arc_todo_client
+from app.task_id_resolver import is_uuid, resolve_task_scope
 from app.tool_registry import (
     CreateKnowledgeInput,
     CreateProjectInput,
@@ -250,9 +251,13 @@ async def list_project_tasks(input: ProjectTaskScopeInput) -> str:
     input_model=GetTaskInput,
 )
 async def get_task(input: GetTaskInput) -> str:
+    resolved = await resolve_task_scope(arc_todo_client, input.task_id)
+    org_id = resolved.get("organization_id") or input.organization_id
+    project_id = resolved.get("project_id") or input.project_id
+    task_id = resolved["task_id"]
     data = await arc_todo_client.request(
         "GET",
-        f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks/{input.task_id}",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
     )
     return arc_todo_client.format_result(data)
 
@@ -266,10 +271,14 @@ async def get_task(input: GetTaskInput) -> str:
     input_model=CreateTaskInput,
 )
 async def create_task(input: CreateTaskInput) -> str:
+    body = _task_body(input)
+    if input.parent_task_id and not is_uuid(input.parent_task_id):
+        parent = await resolve_task_scope(arc_todo_client, input.parent_task_id)
+        body["parentTaskId"] = parent["task_id"]
     data = await arc_todo_client.request(
         "POST",
         f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks",
-        json_body=_task_body(input),
+        json_body=body,
     )
     return arc_todo_client.format_result(data)
 
@@ -283,10 +292,18 @@ async def create_task(input: CreateTaskInput) -> str:
     input_model=UpdateTaskInput,
 )
 async def update_task(input: UpdateTaskInput) -> str:
+    resolved = await resolve_task_scope(arc_todo_client, input.task_id)
+    org_id = resolved.get("organization_id") or input.organization_id
+    project_id = resolved.get("project_id") or input.project_id
+    task_id = resolved["task_id"]
+    body = _task_body(input)
+    if input.parent_task_id and not is_uuid(input.parent_task_id):
+        parent = await resolve_task_scope(arc_todo_client, input.parent_task_id)
+        body["parentTaskId"] = parent["task_id"]
     data = await arc_todo_client.request(
         "PATCH",
-        f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks/{input.task_id}",
-        json_body=_task_body(input),
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
+        json_body=body,
     )
     return arc_todo_client.format_result(data)
 
@@ -300,9 +317,13 @@ async def update_task(input: UpdateTaskInput) -> str:
     input_model=GetTaskInput,
 )
 async def delete_task(input: GetTaskInput) -> str:
+    resolved = await resolve_task_scope(arc_todo_client, input.task_id)
+    org_id = resolved.get("organization_id") or input.organization_id
+    project_id = resolved.get("project_id") or input.project_id
+    task_id = resolved["task_id"]
     await arc_todo_client.request(
         "DELETE",
-        f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks/{input.task_id}",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
     )
     return '{"deleted": true}'
 

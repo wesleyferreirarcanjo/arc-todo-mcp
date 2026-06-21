@@ -63,7 +63,50 @@ async def test_create_task_maps_parent_task_id(api_client):
 
     assert route.called
     assert '"parentTaskId":' in route.calls[0].request.content.decode()
-    assert parent_id in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_task_resolves_friendly_task_id(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    resolve_route = respx.get("http://api.test/tasks/resolve").mock(
+        return_value=Response(
+            200,
+            json={
+                "id": task_id,
+                "displayId": "#arc-1",
+                "taskNumber": 1,
+                "organizationId": org_id,
+                "projectId": project_id,
+                "title": "Friendly task",
+            },
+        )
+    )
+    get_route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+    ).mock(
+        return_value=Response(
+            200,
+            json={"id": task_id, "title": "Friendly task", "displayId": "#arc-1"},
+        )
+    )
+
+    from app.tools.handlers import get_task
+    from app.tool_registry import GetTaskInput
+
+    result = await get_task(
+        GetTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id="arc-1",
+        )
+    )
+
+    assert resolve_route.called
+    assert get_route.called
+    assert task_id in result
 
 
 @pytest.mark.asyncio

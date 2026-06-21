@@ -128,7 +128,9 @@ class ProjectTaskScopeInput(BaseModel):
 
 
 class GetTaskInput(ProjectTaskScopeInput):
-    task_id: str
+    task_id: str = Field(
+        description="Task UUID or friendly ID like arc-1 or #arc-1",
+    )
 
 
 class CreateTaskInput(ProjectTaskScopeInput):
@@ -139,7 +141,7 @@ class CreateTaskInput(ProjectTaskScopeInput):
     due_date: str | None = None
     parent_task_id: str | None = Field(
         default=None,
-        description="Parent task UUID for one-level subtasks",
+        description="Parent task UUID or friendly ID for one-level subtasks",
     )
 
 
@@ -151,7 +153,7 @@ class UpdateTaskInput(GetTaskInput):
     due_date: str | None = None
     parent_task_id: str | None = Field(
         default=None,
-        description="Parent task UUID; null detaches subtask",
+        description="Parent task UUID or friendly ID; null detaches subtask",
     )
 
 
