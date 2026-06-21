@@ -116,6 +116,10 @@ class ListTasksInput(BaseModel):
         default=None,
         description="low | medium | high | critical",
     )
+    parent_task_id: str | None = Field(
+        default=None,
+        description="Filter by parent task UUID",
+    )
 
 
 class ProjectTaskScopeInput(BaseModel):
@@ -133,6 +137,10 @@ class CreateTaskInput(ProjectTaskScopeInput):
     status: str = "todo"
     criticity: str = "medium"
     due_date: str | None = None
+    parent_task_id: str | None = Field(
+        default=None,
+        description="Parent task UUID for one-level subtasks",
+    )
 
 
 class UpdateTaskInput(GetTaskInput):
@@ -141,6 +149,10 @@ class UpdateTaskInput(GetTaskInput):
     status: str | None = None
     criticity: str | None = None
     due_date: str | None = None
+    parent_task_id: str | None = Field(
+        default=None,
+        description="Parent task UUID; null detaches subtask",
+    )
 
 
 class KnowledgeScopeInput(BaseModel):

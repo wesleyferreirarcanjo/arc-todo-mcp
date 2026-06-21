@@ -196,6 +196,8 @@ def _task_body(input: CreateTaskInput | UpdateTaskInput) -> dict:
         body["criticity"] = input.criticity
     if input.due_date is not None:
         body["dueDate"] = input.due_date
+    if input.parent_task_id is not None:
+        body["parentTaskId"] = input.parent_task_id
     return body
 
 
@@ -215,6 +217,7 @@ async def list_tasks(input: ListTasksInput) -> str:
             "projectId": input.project_id,
             "status": input.status,
             "criticity": input.criticity,
+            "parentTaskId": input.parent_task_id,
         }.items()
         if v is not None
     }
