@@ -21,6 +21,13 @@ class ArcTodoClient:
         self._username = settings.arc_todo_username
         self._password = settings.arc_todo_password
 
+    async def get_bearer_token(self) -> str:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            await self._ensure_token(client)
+            if not self._token:
+                raise ArcTodoApiError("No bearer token available")
+            return self._token
+
     async def _ensure_token(self, client: httpx.AsyncClient) -> None:
         if self._token:
             return

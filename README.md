@@ -27,6 +27,10 @@ cp .env.example .env
 | `ARC_TODO_PASSWORD` | — | Service account password |
 | `ARC_TODO_ACCESS_TOKEN` | — | Optional pre-issued bearer token |
 | `MCP_TOOL_SETTINGS_REFRESH_ON_START` | `true` | Load enabled tools from API on startup |
+| `RAG_API_BASE_URL` | `http://localhost:8020` | Arc Todo RAG service base URL |
+| `RAG_TIMEOUT_SECONDS` | `30` | RAG HTTP request timeout |
+| `RAG_TOP_K` | `5` | Default max chunks when not specified in tool call |
+| `RAG_MAX_CONTEXT_TOKENS` | `4000` | Default context token budget when not specified |
 
 ## Run locally
 

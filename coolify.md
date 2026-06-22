@@ -56,6 +56,10 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `ARC_TODO_PASSWORD` | *(redacted — Coolify secret)* |
 | `ARC_TODO_ACCESS_TOKEN` | Optional bearer token instead of username/password |
 | `MCP_TOOL_SETTINGS_REFRESH_ON_START` | `true` |
+| `RAG_API_BASE_URL` | RAG service URL (e.g. `http://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io`) |
+| `RAG_TIMEOUT_SECONDS` | `30` |
+| `RAG_TOP_K` | `5` |
+| `RAG_MAX_CONTEXT_TOKENS` | `4000` |
 
 ## Deploy order
 

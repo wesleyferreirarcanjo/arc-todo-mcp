@@ -201,3 +201,23 @@ class DownloadAttachmentInput(KnowledgeEntryInput):
 
 class DeleteAttachmentInput(DownloadAttachmentInput):
     pass
+
+
+class RetrieveKnowledgeInput(BaseModel):
+    question: str = Field(description="Natural-language question to search indexed knowledge")
+    organization_id: str | None = Field(
+        default=None,
+        description="Organization UUID. Required with project_id for project-scoped retrieval.",
+    )
+    project_id: str | None = Field(
+        default=None,
+        description="Project UUID. Required with organization_id for project-scoped retrieval.",
+    )
+    top_k: int | None = Field(
+        default=None,
+        description="Max chunks to return (default from RAG settings)",
+    )
+    max_context_tokens: int | None = Field(
+        default=None,
+        description="Token budget for context (default from RAG settings)",
+    )

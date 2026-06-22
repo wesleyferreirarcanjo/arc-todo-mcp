@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     arc_todo_password: str | None = None
     arc_todo_access_token: str | None = None
     mcp_tool_settings_refresh_on_start: bool = True
+    rag_api_base_url: str = "http://localhost:8020"
+    rag_timeout_seconds: float = 30.0
+    rag_top_k: int = 5
+    rag_max_context_tokens: int = 4000
 
 
 settings = get_settings()

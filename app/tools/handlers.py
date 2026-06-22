@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 
 from app.arc_todo_client import arc_todo_client
+from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
 from app.tool_registry import (
     CreateKnowledgeInput,
@@ -22,6 +23,7 @@ from app.tool_registry import (
     ListProjectsInput,
     ListTasksInput,
     ProjectTaskScopeInput,
+    RetrieveKnowledgeInput,
     UpdateKnowledgeInput,
     UpdateTaskInput,
     UploadAttachmentInput,
@@ -548,3 +550,40 @@ async def delete_knowledge_attachment(input: DeleteAttachmentInput) -> str:
         f"{_attachments_base_path(input)}/{input.attachment_id}",
     )
     return '{"deleted": true}'
+
+
+@register_tool(
+    key="retrieve_knowledge",
+    group="rag",
+    display_name="Retrieve knowledge",
+    description=(
+        "Search indexed Arc Todo knowledge for relevant chunks. "
+        "Omit organization_id and project_id for general knowledge; "
+        "provide both for project-scoped search (includes general + project chunks)."
+    ),
+    sort_order=40,
+    input_model=RetrieveKnowledgeInput,
+)
+async def retrieve_knowledge(input: RetrieveKnowledgeInput) -> str:
+    has_org = input.organization_id is not None
+    has_project = input.project_id is not None
+    if has_org != has_project:
+        raise ValueError(
+            "organization_id and project_id must both be provided or both omitted"
+        )
+
+    token = await arc_todo_client.get_bearer_token()
+    try:
+        data = await rag_client.retrieve(
+            token=token,
+            question=input.question,
+            organization_id=input.organization_id,
+            project_id=input.project_id,
+            top_k=input.top_k,
+            max_context_tokens=input.max_context_tokens,
+        )
+    except RagClientError as exc:
+        if exc.status_code == 503:
+            return arc_todo_client.format_result({"error": "RAG is disabled"})
+        raise ValueError(str(exc)) from exc
+    return arc_todo_client.format_result(data)
