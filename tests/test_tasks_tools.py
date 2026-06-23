@@ -154,3 +154,55 @@ async def test_update_task_maps_parent_task_id(api_client):
 
     assert route.called
     assert '"parentTaskId":' in route.calls[0].request.content.decode()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_create_task_maps_category_and_metadata(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    route = respx.post(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks"
+    ).mock(
+        return_value=Response(
+            201,
+            json={
+                "id": "22222222-2222-2222-2222-222222222222",
+                "title": "Coding task",
+                "category": "coding",
+                "metadata": {"repositoryUrl": "https://github.com/example/repo"},
+            },
+        )
+    )
+
+    await create_task(
+        CreateTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            title="Coding task",
+            category="coding",
+            metadata={
+                "repositoryUrl": "https://github.com/example/repo",
+                "branch": "main",
+                "commits": ["abc123"],
+            },
+        )
+    )
+
+    body = route.calls[0].request.content.decode()
+    assert '"category":"coding"' in body or '"category": "coding"' in body
+    assert "repositoryUrl" in body
+    assert '"branch":"main"' in body or '"branch": "main"' in body
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_tasks_maps_category_filter(api_client):
+    route = respx.get("http://api.test/tasks").mock(
+        return_value=Response(200, json=[])
+    )
+
+    await list_tasks(ListTasksInput(category="coding"))
+
+    assert route.called
+    assert route.calls[0].request.url.params["category"] == "coding"

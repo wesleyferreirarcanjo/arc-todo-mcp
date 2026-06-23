@@ -120,6 +120,10 @@ class ListTasksInput(BaseModel):
         default=None,
         description="Filter by parent task UUID",
     )
+    category: str | None = Field(
+        default=None,
+        description="coding | meeting | design | marketing | other",
+    )
 
 
 class ProjectTaskScopeInput(BaseModel):
@@ -143,6 +147,17 @@ class CreateTaskInput(ProjectTaskScopeInput):
         default=None,
         description="Parent task UUID or friendly ID for one-level subtasks",
     )
+    category: str = Field(
+        default="other",
+        description="coding | meeting | design | marketing | other",
+    )
+    metadata: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Structured metadata. For coding tasks: repositoryUrl, branch, commits, "
+            "pullRequestUrl, deploymentUrl, implementationNotes"
+        ),
+    )
 
 
 class UpdateTaskInput(GetTaskInput):
@@ -154,6 +169,17 @@ class UpdateTaskInput(GetTaskInput):
     parent_task_id: str | None = Field(
         default=None,
         description="Parent task UUID or friendly ID; null detaches subtask",
+    )
+    category: str | None = Field(
+        default=None,
+        description="coding | meeting | design | marketing | other",
+    )
+    metadata: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Structured metadata. For coding tasks: repositoryUrl, branch, commits, "
+            "pullRequestUrl, deploymentUrl, implementationNotes"
+        ),
     )
 
 
