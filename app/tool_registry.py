@@ -207,11 +207,15 @@ class RetrieveKnowledgeInput(BaseModel):
     question: str = Field(description="Natural-language question to search indexed knowledge")
     organization_id: str | None = Field(
         default=None,
-        description="Organization UUID. Required with project_id for project-scoped retrieval.",
+        description="Organization UUID. With project_id selects project scope; alone selects organization scope.",
     )
     project_id: str | None = Field(
         default=None,
-        description="Project UUID. Required with organization_id for project-scoped retrieval.",
+        description="Project UUID. Requires organization_id for project-scoped retrieval.",
+    )
+    person_id: str | None = Field(
+        default=None,
+        description="Person UUID for person-scoped retrieval (includes general + person knowledge).",
     )
     top_k: int | None = Field(
         default=None,

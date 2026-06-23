@@ -558,19 +558,16 @@ async def delete_knowledge_attachment(input: DeleteAttachmentInput) -> str:
     display_name="Retrieve knowledge",
     description=(
         "Search indexed Arc Todo knowledge for relevant chunks. "
-        "Omit organization_id and project_id for general knowledge; "
-        "provide both for project-scoped search (includes general + project chunks)."
+        "Omit scope ids for general knowledge; provide organization_id for org scope; "
+        "organization_id + project_id for project scope (includes general + org + project chunks); "
+        "person_id for person scope."
     ),
     sort_order=40,
     input_model=RetrieveKnowledgeInput,
 )
 async def retrieve_knowledge(input: RetrieveKnowledgeInput) -> str:
-    has_org = input.organization_id is not None
-    has_project = input.project_id is not None
-    if has_org != has_project:
-        raise ValueError(
-            "organization_id and project_id must both be provided or both omitted"
-        )
+    if input.project_id and not input.organization_id:
+        raise ValueError("organization_id is required when project_id is provided")
 
     token = await arc_todo_client.get_bearer_token()
     try:
@@ -579,6 +576,7 @@ async def retrieve_knowledge(input: RetrieveKnowledgeInput) -> str:
             question=input.question,
             organization_id=input.organization_id,
             project_id=input.project_id,
+            person_id=input.person_id,
             top_k=input.top_k,
             max_context_tokens=input.max_context_tokens,
         )

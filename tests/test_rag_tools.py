@@ -101,10 +101,70 @@ async def test_retrieve_knowledge_project_route(rag_env, mock_token):
 
 
 @pytest.mark.asyncio
-async def test_retrieve_knowledge_rejects_partial_scope(mock_token):
-    with pytest.raises(ValueError, match="organization_id and project_id"):
+@respx.mock
+async def test_retrieve_knowledge_organization_route(rag_env, mock_token):
+    route = respx.post("http://rag.test/retrieve/organization").mock(
+        return_value=Response(
+            200,
+            json={
+                "mode": "organization",
+                "organizationId": ORG_ID,
+                "question": "org docs",
+                "chunks": [],
+                "tokenUsage": {},
+                "indexStatus": {},
+            },
+        )
+    )
+
+    await retrieve_knowledge(
+        RetrieveKnowledgeInput(
+            question="org docs",
+            organization_id=ORG_ID,
+        )
+    )
+
+    assert route.called
+    body = json.loads(route.calls[0].request.content)
+    assert body["organizationId"] == ORG_ID
+    assert "projectId" not in body
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_retrieve_knowledge_person_route(rag_env, mock_token):
+    person_id = "person-123"
+    route = respx.post("http://rag.test/retrieve/person").mock(
+        return_value=Response(
+            200,
+            json={
+                "mode": "person",
+                "personId": person_id,
+                "question": "contact notes",
+                "chunks": [],
+                "tokenUsage": {},
+                "indexStatus": {},
+            },
+        )
+    )
+
+    await retrieve_knowledge(
+        RetrieveKnowledgeInput(
+            question="contact notes",
+            person_id=person_id,
+        )
+    )
+
+    assert route.called
+    body = json.loads(route.calls[0].request.content)
+    assert body["personId"] == person_id
+
+
+@pytest.mark.asyncio
+async def test_retrieve_knowledge_rejects_project_without_org(mock_token):
+    with pytest.raises(ValueError, match="organization_id is required"):
         await retrieve_knowledge(
-            RetrieveKnowledgeInput(question="test", organization_id=ORG_ID)
+            RetrieveKnowledgeInput(question="test", project_id=PROJECT_ID)
         )
 
 

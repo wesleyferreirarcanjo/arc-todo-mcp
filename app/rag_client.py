@@ -13,6 +13,27 @@ class RagClientError(Exception):
         self.status_code = status_code
 
 
+def select_retrieve_route(
+    *,
+    organization_id: str | None = None,
+    project_id: str | None = None,
+    person_id: str | None = None,
+) -> tuple[str, dict[str, str]]:
+    if organization_id and project_id:
+        return "/retrieve/project", {
+            "organizationId": organization_id,
+            "projectId": project_id,
+        }
+    if organization_id:
+        return "/retrieve/organization", {"organizationId": organization_id}
+    if person_id:
+        scope: dict[str, str] = {"personId": person_id}
+        if organization_id:
+            scope["organizationId"] = organization_id
+        return "/retrieve/person", scope
+    return "/retrieve/general", {}
+
+
 class RagClient:
     def __init__(self) -> None:
         self._base_url = settings.rag_api_base_url.rstrip("/")
@@ -44,6 +65,7 @@ class RagClient:
         question: str,
         organization_id: str | None = None,
         project_id: str | None = None,
+        person_id: str | None = None,
         top_k: int | None = None,
         max_context_tokens: int | None = None,
     ) -> dict[str, Any]:
@@ -52,12 +74,12 @@ class RagClient:
             "topK": top_k or self._top_k,
             "maxContextTokens": max_context_tokens or self._max_context_tokens,
         }
-        if organization_id and project_id:
-            body["organizationId"] = organization_id
-            body["projectId"] = project_id
-            path = "/retrieve/project"
-        else:
-            path = "/retrieve/general"
+        path, scope_fields = select_retrieve_route(
+            organization_id=organization_id,
+            project_id=project_id,
+            person_id=person_id,
+        )
+        body.update(scope_fields)
 
         headers = {"Authorization": f"Bearer {token}"}
         try:
