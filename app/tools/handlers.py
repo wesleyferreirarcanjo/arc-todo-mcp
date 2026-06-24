@@ -152,6 +152,22 @@ async def get_project(input: GetProjectInput) -> str:
 
 
 @register_tool(
+    key="delete_project",
+    group="context",
+    display_name="Delete project",
+    description="Delete a project from an organization.",
+    sort_order=15,
+    input_model=GetProjectInput,
+)
+async def delete_project(input: GetProjectInput) -> str:
+    await arc_todo_client.request(
+        "DELETE",
+        f"/organizations/{input.organization_id}/projects/{input.project_id}",
+    )
+    return '{"deleted": true}'
+
+
+@register_tool(
     key="list_persons",
     group="context",
     display_name="List persons",

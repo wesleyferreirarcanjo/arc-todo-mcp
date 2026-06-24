@@ -5,8 +5,8 @@ from mcp.types import ListToolsRequest
 
 from app.arc_todo_client import arc_todo_client
 from app.mcp_server import build_mcp_server
-from app.tools.handlers import create_task, list_tasks, update_task
-from app.tool_registry import CreateTaskInput, ListTasksInput, UpdateTaskInput
+from app.tools.handlers import create_task, delete_project, list_tasks, update_task
+from app.tool_registry import CreateTaskInput, GetProjectInput, ListTasksInput, UpdateTaskInput
 
 
 @pytest.mark.asyncio
@@ -31,6 +31,23 @@ def api_client(monkeypatch):
     arc_todo_client._base_url = "http://api.test"
     arc_todo_client._token = "token-abc"
     return arc_todo_client
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_delete_project_calls_project_endpoint(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    route = respx.delete(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}"
+    ).mock(return_value=Response(204))
+
+    result = await delete_project(
+        GetProjectInput(organization_id=org_id, project_id=project_id)
+    )
+
+    assert route.called
+    assert result == '{"deleted": true}'
 
 
 @pytest.mark.asyncio
