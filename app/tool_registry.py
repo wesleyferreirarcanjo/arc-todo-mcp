@@ -111,7 +111,10 @@ class GetPersonInput(BaseModel):
 class ListTasksInput(BaseModel):
     organization_id: str | None = None
     project_id: str | None = None
-    status: str | None = Field(default=None, description="todo | in_progress | done")
+    status: str | None = Field(
+        default=None,
+        description="todo | in_progress | dev_test | qa_test | done",
+    )
     criticity: str | None = Field(
         default=None,
         description="low | medium | high | critical",
@@ -140,6 +143,18 @@ class GetTaskInput(ProjectTaskScopeInput):
 class CreateTaskInput(ProjectTaskScopeInput):
     title: str
     description: str | None = None
+    business_description: str | None = Field(
+        default=None,
+        description="Business intent, scope, and acceptance criteria",
+    )
+    plan_code_description: str | None = Field(
+        default=None,
+        description="Technical execution plan for agents or developers",
+    )
+    test_description: str | None = Field(
+        default=None,
+        description="Verification steps for Dev Test, QA Test, and final checks",
+    )
     status: str = "todo"
     criticity: str = "medium"
     due_date: str | None = None
@@ -163,6 +178,18 @@ class CreateTaskInput(ProjectTaskScopeInput):
 class UpdateTaskInput(GetTaskInput):
     title: str | None = None
     description: str | None = None
+    business_description: str | None = Field(
+        default=None,
+        description="Business intent, scope, and acceptance criteria",
+    )
+    plan_code_description: str | None = Field(
+        default=None,
+        description="Technical execution plan for agents or developers",
+    )
+    test_description: str | None = Field(
+        default=None,
+        description="Verification steps for Dev Test, QA Test, and final checks",
+    )
     status: str | None = None
     criticity: str | None = None
     due_date: str | None = None

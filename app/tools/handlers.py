@@ -209,6 +209,12 @@ def _task_body(input: CreateTaskInput | UpdateTaskInput) -> dict:
         body["title"] = input.title
     if input.description is not None:
         body["description"] = input.description
+    if input.business_description is not None:
+        body["businessDescription"] = input.business_description
+    if input.plan_code_description is not None:
+        body["planCodeDescription"] = input.plan_code_description
+    if input.test_description is not None:
+        body["testDescription"] = input.test_description
     if input.status is not None:
         body["status"] = input.status
     if input.criticity is not None:
