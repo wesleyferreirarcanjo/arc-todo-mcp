@@ -74,6 +74,36 @@ class GetOrganizationInput(BaseModel):
     organization_id: str = Field(description="Organization UUID")
 
 
+class ListOrganizationMembersInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+
+
+class CreateOrganizationUserInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    username: str
+    password: str = Field(min_length=6)
+    role: str | None = Field(
+        default=None,
+        description="owner | admin | member",
+    )
+
+
+class AddOrganizationMemberInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    username: str
+    role: str | None = Field(
+        default=None,
+        description="owner | admin | member",
+    )
+
+
+class ListOrganizationActivityInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    user_id: str | None = Field(default=None, description="Filter by actor user UUID")
+    limit: int | None = Field(default=None, ge=1, le=100)
+    offset: int | None = Field(default=None, ge=0)
+
+
 class ListProjectsInput(BaseModel):
     organization_id: str = Field(description="Organization UUID")
 

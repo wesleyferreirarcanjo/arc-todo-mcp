@@ -6,6 +6,8 @@ from app.arc_todo_client import arc_todo_client
 from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
 from app.tool_registry import (
+    AddOrganizationMemberInput,
+    CreateOrganizationUserInput,
     CreateKnowledgeInput,
     CreateProjectInput,
     CreateTaskInput,
@@ -19,6 +21,8 @@ from app.tool_registry import (
     KnowledgeEntryInput,
     KnowledgeScopeInput,
     ListAttachmentsInput,
+    ListOrganizationActivityInput,
+    ListOrganizationMembersInput,
     ListPersonsInput,
     ListProjectsInput,
     ListTasksInput,
@@ -94,11 +98,94 @@ async def get_organization(input: GetOrganizationInput) -> str:
 
 
 @register_tool(
+    key="list_organization_members",
+    group="context",
+    display_name="List organization members",
+    description="List login members of an organization with roles.",
+    sort_order=12,
+    input_model=ListOrganizationMembersInput,
+)
+async def list_organization_members(input: ListOrganizationMembersInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        f"/organizations/{input.organization_id}/members",
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="create_organization_user",
+    group="context",
+    display_name="Create organization user",
+    description="Create a login user and add them to an organization.",
+    sort_order=13,
+    input_model=CreateOrganizationUserInput,
+)
+async def create_organization_user(input: CreateOrganizationUserInput) -> str:
+    body: dict[str, str] = {
+        "username": input.username,
+        "password": input.password,
+    }
+    if input.role:
+        body["role"] = input.role
+    data = await arc_todo_client.request(
+        "POST",
+        f"/organizations/{input.organization_id}/users",
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="add_organization_member",
+    group="context",
+    display_name="Add organization member",
+    description="Add an existing login user to an organization by username.",
+    sort_order=14,
+    input_model=AddOrganizationMemberInput,
+)
+async def add_organization_member(input: AddOrganizationMemberInput) -> str:
+    body: dict[str, str] = {"username": input.username}
+    if input.role:
+        body["role"] = input.role
+    data = await arc_todo_client.request(
+        "POST",
+        f"/organizations/{input.organization_id}/members",
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="list_organization_activity",
+    group="activity",
+    display_name="List organization activity",
+    description="List recent user activity for an organization.",
+    sort_order=30,
+    input_model=ListOrganizationActivityInput,
+)
+async def list_organization_activity(input: ListOrganizationActivityInput) -> str:
+    params: dict[str, str | int] = {}
+    if input.user_id:
+        params["userId"] = input.user_id
+    if input.limit is not None:
+        params["limit"] = input.limit
+    if input.offset is not None:
+        params["offset"] = input.offset
+    data = await arc_todo_client.request(
+        "GET",
+        f"/organizations/{input.organization_id}/activity",
+        params=params or None,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
     key="list_projects",
     group="context",
     display_name="List projects",
     description="List projects in an organization.",
-    sort_order=12,
+    sort_order=16,
     input_model=ListProjectsInput,
 )
 async def list_projects(input: ListProjectsInput) -> str:
@@ -123,7 +210,7 @@ def _project_body(input: CreateProjectInput) -> dict[str, str]:
     group="context",
     display_name="Create project",
     description="Create a project in an organization.",
-    sort_order=13,
+    sort_order=17,
     input_model=CreateProjectInput,
 )
 async def create_project(input: CreateProjectInput) -> str:
@@ -140,7 +227,7 @@ async def create_project(input: CreateProjectInput) -> str:
     group="context",
     display_name="Get project",
     description="Fetch one project by organization and project ID.",
-    sort_order=14,
+    sort_order=18,
     input_model=GetProjectInput,
 )
 async def get_project(input: GetProjectInput) -> str:
@@ -156,7 +243,7 @@ async def get_project(input: GetProjectInput) -> str:
     group="context",
     display_name="Delete project",
     description="Delete a project from an organization.",
-    sort_order=15,
+    sort_order=19,
     input_model=GetProjectInput,
 )
 async def delete_project(input: GetProjectInput) -> str:
@@ -172,7 +259,7 @@ async def delete_project(input: GetProjectInput) -> str:
     group="context",
     display_name="List persons",
     description="List persons globally or within an organization.",
-    sort_order=15,
+    sort_order=20,
     input_model=ListPersonsInput,
 )
 async def list_persons(input: ListPersonsInput) -> str:
@@ -189,7 +276,7 @@ async def list_persons(input: ListPersonsInput) -> str:
     group="context",
     display_name="Get person",
     description="Fetch one person globally or within an organization.",
-    sort_order=16,
+    sort_order=21,
     input_model=GetPersonInput,
 )
 async def get_person(input: GetPersonInput) -> str:
