@@ -227,6 +227,12 @@ def _task_body(input: CreateTaskInput | UpdateTaskInput) -> dict:
         body["category"] = input.category
     if input.metadata is not None:
         body["metadata"] = input.metadata
+    if input.is_bug is not None:
+        body["isBug"] = input.is_bug
+    if input.bug_reason is not None:
+        body["bugReason"] = input.bug_reason
+    if input.qa_checklist_state is not None:
+        body["qaChecklistState"] = input.qa_checklist_state
     return body
 
 
@@ -248,6 +254,7 @@ async def list_tasks(input: ListTasksInput) -> str:
             "criticity": input.criticity,
             "parentTaskId": input.parent_task_id,
             "category": input.category,
+            "isBug": "true" if input.is_bug else None,
         }.items()
         if v is not None
     }
@@ -316,7 +323,7 @@ async def create_task(input: CreateTaskInput) -> str:
     key="update_task",
     group="tasks",
     display_name="Update task",
-    description="Update a task in a project. Set parent_task_id to attach as subtask or null to detach.",
+    description="Update a task in a project. Set parent_task_id to attach as subtask or null to detach. Setting is_bug=true flags the task as a bug and moves it to todo.",
     sort_order=24,
     input_model=UpdateTaskInput,
 )

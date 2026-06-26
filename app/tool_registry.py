@@ -127,6 +127,10 @@ class ListTasksInput(BaseModel):
         default=None,
         description="coding | meeting | design | marketing | other",
     )
+    is_bug: bool | None = Field(
+        default=None,
+        description="Filter tasks flagged as bugs",
+    )
 
 
 class ProjectTaskScopeInput(BaseModel):
@@ -173,6 +177,18 @@ class CreateTaskInput(ProjectTaskScopeInput):
             "pullRequestUrl, deploymentUrl, implementationNotes"
         ),
     )
+    is_bug: bool | None = Field(
+        default=None,
+        description="Flag task as bug. Setting true moves status to todo.",
+    )
+    bug_reason: str | None = Field(
+        default=None,
+        description="Optional reason when flagging a task as bug",
+    )
+    qa_checklist_state: dict[str, Any] | None = Field(
+        default=None,
+        description="QA checklist progress with checkedItemIds array",
+    )
 
 
 class UpdateTaskInput(GetTaskInput):
@@ -207,6 +223,18 @@ class UpdateTaskInput(GetTaskInput):
             "Structured metadata. For coding tasks: repositoryUrl, branch, commits, "
             "pullRequestUrl, deploymentUrl, implementationNotes"
         ),
+    )
+    is_bug: bool | None = Field(
+        default=None,
+        description="Flag task as bug. Setting true moves status to todo.",
+    )
+    bug_reason: str | None = Field(
+        default=None,
+        description="Optional reason when flagging a task as bug",
+    )
+    qa_checklist_state: dict[str, Any] | None = Field(
+        default=None,
+        description="QA checklist progress with checkedItemIds array",
     )
 
 

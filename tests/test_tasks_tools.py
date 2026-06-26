@@ -214,6 +214,41 @@ async def test_create_task_maps_category_and_metadata(api_client):
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_update_task_maps_is_bug(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.patch(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+    ).mock(
+        return_value=Response(
+            200,
+            json={
+                "id": task_id,
+                "title": "Bug task",
+                "isBug": True,
+                "status": "todo",
+            },
+        )
+    )
+
+    await update_task(
+        UpdateTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            is_bug=True,
+            bug_reason="Broken checklist",
+        )
+    )
+
+    body = route.calls[0].request.content.decode()
+    assert "isBug" in body
+    assert "bugReason" in body
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_list_tasks_maps_category_filter(api_client):
     route = respx.get("http://api.test/tasks").mock(
         return_value=Response(200, json=[])
