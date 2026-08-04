@@ -22,7 +22,7 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 | Branch | `main` |
 | Build pack | Dockerfile |
 | Public URL | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io` |
-| MCP endpoint | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
+| MCP endpoint | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp/` (trailing slash required for Cursor) |
 | Health check | `GET /health` → `{ "status": "ok" }` |
 
 ### Build / run

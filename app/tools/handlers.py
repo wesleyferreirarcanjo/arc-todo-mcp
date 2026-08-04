@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 
 from app.arc_todo_client import arc_todo_client
+from app.caller_auth import require_caller_token
 from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
 from app.tool_registry import (
@@ -690,7 +691,7 @@ async def retrieve_knowledge(input: RetrieveKnowledgeInput) -> str:
     if input.project_id and not input.organization_id:
         raise ValueError("organization_id is required when project_id is provided")
 
-    token = await arc_todo_client.get_bearer_token()
+    token = require_caller_token()
     try:
         data = await rag_client.retrieve(
             token=token,

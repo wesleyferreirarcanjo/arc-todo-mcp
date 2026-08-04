@@ -21,14 +21,6 @@ def rag_env(monkeypatch):
     rag_client._base_url = "http://rag.test"
 
 
-@pytest.fixture
-def mock_token(monkeypatch):
-    async def _token():
-        return "token-abc"
-
-    monkeypatch.setattr("app.tools.handlers.arc_todo_client.get_bearer_token", _token)
-
-
 @pytest.mark.asyncio
 async def test_build_mcp_server_includes_retrieve_knowledge():
     _, session_manager = build_mcp_server({"retrieve_knowledge"})
@@ -40,7 +32,7 @@ async def test_build_mcp_server_includes_retrieve_knowledge():
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_retrieve_knowledge_general_route(rag_env, mock_token):
+async def test_retrieve_knowledge_general_route(rag_env, caller_auth):
     route = respx.post("http://rag.test/retrieve/general").mock(
         return_value=Response(
             200,
@@ -65,11 +57,12 @@ async def test_retrieve_knowledge_general_route(rag_env, mock_token):
     assert body["maxContextTokens"] == 4000
     assert "organizationId" not in body
     assert "Deploy with Coolify" in result
+    assert route.calls[0].request.headers["authorization"] == "Bearer token-abc"
 
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_retrieve_knowledge_project_route(rag_env, mock_token):
+async def test_retrieve_knowledge_project_route(rag_env, caller_auth):
     route = respx.post("http://rag.test/retrieve/project").mock(
         return_value=Response(
             200,
@@ -102,7 +95,7 @@ async def test_retrieve_knowledge_project_route(rag_env, mock_token):
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_retrieve_knowledge_organization_route(rag_env, mock_token):
+async def test_retrieve_knowledge_organization_route(rag_env, caller_auth):
     route = respx.post("http://rag.test/retrieve/organization").mock(
         return_value=Response(
             200,
@@ -132,7 +125,7 @@ async def test_retrieve_knowledge_organization_route(rag_env, mock_token):
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_retrieve_knowledge_person_route(rag_env, mock_token):
+async def test_retrieve_knowledge_person_route(rag_env, caller_auth):
     person_id = "person-123"
     route = respx.post("http://rag.test/retrieve/person").mock(
         return_value=Response(
@@ -161,7 +154,7 @@ async def test_retrieve_knowledge_person_route(rag_env, mock_token):
 
 
 @pytest.mark.asyncio
-async def test_retrieve_knowledge_rejects_project_without_org(mock_token):
+async def test_retrieve_knowledge_rejects_project_without_org(caller_auth):
     with pytest.raises(ValueError, match="organization_id is required"):
         await retrieve_knowledge(
             RetrieveKnowledgeInput(question="test", project_id=PROJECT_ID)
@@ -169,8 +162,14 @@ async def test_retrieve_knowledge_rejects_project_without_org(mock_token):
 
 
 @pytest.mark.asyncio
+async def test_retrieve_knowledge_requires_caller_token(rag_env):
+    with pytest.raises(ValueError, match="Missing Authorization bearer token"):
+        await retrieve_knowledge(RetrieveKnowledgeInput(question="test"))
+
+
+@pytest.mark.asyncio
 @respx.mock
-async def test_retrieve_knowledge_rag_disabled(rag_env, mock_token):
+async def test_retrieve_knowledge_rag_disabled(rag_env, caller_auth):
     respx.post("http://rag.test/retrieve/general").mock(
         return_value=Response(503, json={"detail": "RAG is disabled"})
     )

@@ -10,6 +10,7 @@ from starlette.applications import Starlette
 from starlette.routing import Mount
 from pydantic import BaseModel
 
+from app.caller_auth import caller_token_scope, extract_bearer_from_authorization
 from app.tool_registry import MCP_TOOL_REGISTRY, ToolDefinition
 
 # Import handlers so @register_tool decorators populate MCP_TOOL_REGISTRY.
@@ -22,6 +23,17 @@ def _json_schema(model: type[BaseModel] | None) -> dict[str, Any]:
     schema = model.model_json_schema()
     schema.setdefault("additionalProperties", False)
     return schema
+
+
+def _caller_token_from_request(server: Server) -> str | None:
+    try:
+        request = server.request_context.request
+    except LookupError:
+        return None
+    if request is None:
+        return None
+    authorization = request.headers.get("authorization")
+    return extract_bearer_from_authorization(authorization)
 
 
 def build_mcp_server(enabled_keys: set[str]) -> tuple[Server, StreamableHTTPSessionManager]:
@@ -54,11 +66,12 @@ def build_mcp_server(enabled_keys: set[str]) -> tuple[Server, StreamableHTTPSess
         if tool is None:
             raise ValueError(f"Tool '{name}' is not enabled")
 
-        if tool.input_model is None:
-            result = await tool.handler(None)
-        else:
-            validated = tool.input_model.model_validate(arguments)
-            result = await tool.handler(validated)
+        with caller_token_scope(_caller_token_from_request(server)):
+            if tool.input_model is None:
+                result = await tool.handler(None)
+            else:
+                validated = tool.input_model.model_validate(arguments)
+                result = await tool.handler(validated)
 
         return [TextContent(type="text", text=result)]
 

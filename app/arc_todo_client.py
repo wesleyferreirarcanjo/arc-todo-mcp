@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+from app.caller_auth import get_caller_token
 from app.config import settings
 
 
@@ -21,14 +22,15 @@ class ArcTodoClient:
         self._username = settings.arc_todo_username
         self._password = settings.arc_todo_password
 
-    async def get_bearer_token(self) -> str:
+    async def get_service_bearer_token(self) -> str:
+        """Service-account token for startup / no-user-context calls only."""
         async with httpx.AsyncClient(timeout=60.0) as client:
-            await self._ensure_token(client)
+            await self._ensure_service_token(client)
             if not self._token:
-                raise ArcTodoApiError("No bearer token available")
+                raise ArcTodoApiError("No service bearer token available")
             return self._token
 
-    async def _ensure_token(self, client: httpx.AsyncClient) -> None:
+    async def _ensure_service_token(self, client: httpx.AsyncClient) -> None:
         if self._token:
             return
         if not self._username or not self._password:
@@ -45,10 +47,17 @@ class ArcTodoClient:
         data = response.json()
         self._token = data["access_token"]
 
-    def _auth_headers(self) -> dict[str, str]:
-        if not self._token:
-            return {}
-        return {"Authorization": f"Bearer {self._token}"}
+    def _auth_headers(self, *, allow_service_account: bool = False) -> dict[str, str]:
+        caller = get_caller_token()
+        if caller:
+            return {"Authorization": f"Bearer {caller}"}
+        if allow_service_account and self._token:
+            return {"Authorization": f"Bearer {self._token}"}
+        raise ArcTodoApiError(
+            "Missing Authorization bearer token. "
+            "Set headers.Authorization to Bearer <your Arc Todo JWT> in mcp.json.",
+            401,
+        )
 
     async def _raise_api_error(self, response: httpx.Response) -> None:
         message = f"Request failed ({response.status_code})"
@@ -72,14 +81,15 @@ class ArcTodoClient:
         auth: bool = True,
     ) -> Any:
         async with httpx.AsyncClient(timeout=60.0) as client:
+            headers = None
             if auth:
-                await self._ensure_token(client)
+                headers = self._auth_headers(allow_service_account=False)
             response = await client.request(
                 method,
                 f"{self._base_url}{path}",
                 params=params,
                 json=json_body,
-                headers=self._auth_headers() if auth else None,
+                headers=headers,
             )
             if not response.is_success:
                 await self._raise_api_error(response)
@@ -109,12 +119,11 @@ class ArcTodoClient:
         form_fields: dict[str, str] | None = None,
     ) -> Any:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            await self._ensure_token(client)
             files = {file_field: (filename, content, mime_type)}
             data = form_fields or {}
             response = await client.post(
                 f"{self._base_url}{path}",
-                headers=self._auth_headers(),
+                headers=self._auth_headers(allow_service_account=False),
                 files=files,
                 data=data,
             )
@@ -124,10 +133,9 @@ class ArcTodoClient:
 
     async def download(self, path: str) -> tuple[bytes, str, str]:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            await self._ensure_token(client)
             response = await client.get(
                 f"{self._base_url}{path}",
-                headers=self._auth_headers(),
+                headers=self._auth_headers(allow_service_account=False),
             )
             if not response.is_success:
                 await self._raise_api_error(response)

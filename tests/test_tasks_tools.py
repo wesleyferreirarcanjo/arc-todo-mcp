@@ -25,7 +25,7 @@ async def test_build_mcp_server_registers_only_enabled_tools():
 
 
 @pytest.fixture
-def api_client(monkeypatch):
+def api_client(monkeypatch, caller_auth):
     monkeypatch.setenv("ARC_TODO_API_BASE_URL", "http://api.test")
     monkeypatch.setenv("ARC_TODO_ACCESS_TOKEN", "token-abc")
     arc_todo_client._base_url = "http://api.test"
