@@ -5,8 +5,25 @@ from mcp.types import ListToolsRequest
 
 from app.arc_todo_client import arc_todo_client
 from app.mcp_server import build_mcp_server
-from app.tools.handlers import create_task, delete_project, list_tasks, update_task
-from app.tool_registry import CreateTaskInput, GetProjectInput, ListTasksInput, UpdateTaskInput
+from app.tools.handlers import (
+    create_task,
+    delete_project,
+    download_task_evidence,
+    list_task_comments,
+    list_task_evidence,
+    list_tasks,
+    update_task,
+    add_task_comment,
+)
+from app.tool_registry import (
+    AddTaskCommentInput,
+    CreateTaskInput,
+    DownloadTaskEvidenceInput,
+    GetProjectInput,
+    GetTaskInput,
+    ListTasksInput,
+    UpdateTaskInput,
+)
 
 
 @pytest.mark.asyncio
@@ -258,3 +275,157 @@ async def test_list_tasks_maps_category_filter(api_client):
 
     assert route.called
     assert route.calls[0].request.url.params["category"] == "coding"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_task_comments_calls_comments_endpoint(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/comments"
+    ).mock(
+        return_value=Response(
+            200,
+            json=[
+                {
+                    "id": "c1",
+                    "taskId": task_id,
+                    "body": "Icon breaks on mobile",
+                    "createdById": "u1",
+                    "createdAt": "2026-08-05T12:00:00.000Z",
+                    "updatedAt": "2026-08-05T12:00:00.000Z",
+                }
+            ],
+        )
+    )
+
+    result = await list_task_comments(
+        GetTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+        )
+    )
+
+    assert route.called
+    assert "Icon breaks on mobile" in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_add_task_comment_posts_body(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.post(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/comments"
+    ).mock(
+        return_value=Response(
+            201,
+            json={
+                "id": "c2",
+                "taskId": task_id,
+                "body": "Fixed icon padding",
+                "createdById": "u1",
+                "createdAt": "2026-08-05T13:00:00.000Z",
+                "updatedAt": "2026-08-05T13:00:00.000Z",
+            },
+        )
+    )
+
+    result = await add_task_comment(
+        AddTaskCommentInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            body="Fixed icon padding",
+        )
+    )
+
+    assert route.called
+    assert '"body": "Fixed icon padding"' in route.calls[0].request.content.decode() or (
+        '"body":"Fixed icon padding"' in route.calls[0].request.content.decode()
+    )
+    assert "Fixed icon padding" in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_task_evidence_calls_evidence_endpoint(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/evidence"
+    ).mock(
+        return_value=Response(
+            200,
+            json=[
+                {
+                    "id": "e1",
+                    "taskId": task_id,
+                    "originalFilename": "icon-bug.png",
+                    "mimeType": "image/png",
+                    "sizeBytes": 1234,
+                    "uploadedById": "u1",
+                    "createdAt": "2026-08-05T12:00:00.000Z",
+                }
+            ],
+        )
+    )
+
+    result = await list_task_evidence(
+        GetTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+        )
+    )
+
+    assert route.called
+    assert "icon-bug.png" in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_download_task_evidence_returns_image_content(api_client):
+    from mcp.types import ImageContent, TextContent
+
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    evidence_id = "33333333-3333-3333-3333-333333333333"
+    png_bytes = b"\x89PNG\r\n\x1a\nfake"
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+        f"/evidence/{evidence_id}/download"
+    ).mock(
+        return_value=Response(
+            200,
+            content=png_bytes,
+            headers={
+                "content-type": "image/png",
+                "content-disposition": 'attachment; filename="icon-bug.png"',
+            },
+        )
+    )
+
+    result = await download_task_evidence(
+        DownloadTaskEvidenceInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            evidence_id=evidence_id,
+        )
+    )
+
+    assert route.called
+    assert len(result) == 2
+    assert isinstance(result[0], TextContent)
+    assert "icon-bug.png" in result[0].text
+    assert "contentBase64" not in result[0].text
+    assert isinstance(result[1], ImageContent)
+    assert result[1].mimeType == "image/png"
+

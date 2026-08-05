@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import base64
+from typing import Any
+
+from mcp.types import ImageContent, TextContent
 
 from app.arc_todo_client import arc_todo_client
 from app.caller_auth import require_caller_token
@@ -8,12 +11,14 @@ from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
 from app.tool_registry import (
     AddOrganizationMemberInput,
+    AddTaskCommentInput,
     CreateOrganizationUserInput,
     CreateKnowledgeInput,
     CreateProjectInput,
     CreateTaskInput,
     DeleteAttachmentInput,
     DownloadAttachmentInput,
+    DownloadTaskEvidenceInput,
     EmptyInput,
     GetOrganizationInput,
     GetPersonInput,
@@ -450,6 +455,98 @@ async def delete_task(input: GetTaskInput) -> str:
         f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
     )
     return '{"deleted": true}'
+
+
+async def _resolve_task_path(input: GetTaskInput) -> tuple[str, str, str]:
+    resolved = await resolve_task_scope(arc_todo_client, input.task_id)
+    org_id = resolved.get("organization_id") or input.organization_id
+    project_id = resolved.get("project_id") or input.project_id
+    return org_id, project_id, resolved["task_id"]
+
+
+@register_tool(
+    key="list_task_comments",
+    group="tasks",
+    display_name="List task comments",
+    description="List comments on a task (QA notes, discussion). Supports friendly task IDs.",
+    sort_order=26,
+    input_model=GetTaskInput,
+)
+async def list_task_comments(input: GetTaskInput) -> str:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    data = await arc_todo_client.request(
+        "GET",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/comments",
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="add_task_comment",
+    group="tasks",
+    display_name="Add task comment",
+    description="Post a comment on a task. Supports friendly task IDs.",
+    sort_order=27,
+    input_model=AddTaskCommentInput,
+)
+async def add_task_comment(input: AddTaskCommentInput) -> str:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    data = await arc_todo_client.request(
+        "POST",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/comments",
+        json_body={"body": input.body},
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="list_task_evidence",
+    group="tasks",
+    display_name="List task evidence",
+    description="List image/video evidence attachments on a task. Supports friendly task IDs.",
+    sort_order=28,
+    input_model=GetTaskInput,
+)
+async def list_task_evidence(input: GetTaskInput) -> str:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    data = await arc_todo_client.request(
+        "GET",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/evidence",
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="download_task_evidence",
+    group="tasks",
+    display_name="Download task evidence",
+    description=(
+        "Download one task evidence file. Images return as MCP image content for vision; "
+        "all files also include filename/mime/size metadata (and base64 for non-images)."
+    ),
+    sort_order=29,
+    input_model=DownloadTaskEvidenceInput,
+)
+async def download_task_evidence(input: DownloadTaskEvidenceInput) -> list[Any]:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    content, mime_type, filename = await arc_todo_client.download(
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+        f"/evidence/{input.evidence_id}/download",
+    )
+    mime = (mime_type or "application/octet-stream").split(";")[0].strip()
+    b64 = base64.b64encode(content).decode("ascii")
+    meta: dict[str, Any] = {
+        "id": input.evidence_id,
+        "filename": filename,
+        "mimeType": mime,
+        "sizeBytes": len(content),
+    }
+    if not mime.startswith("image/"):
+        meta["contentBase64"] = b64
+    parts: list[Any] = [TextContent(type="text", text=arc_todo_client.format_result(meta))]
+    if mime.startswith("image/"):
+        parts.append(ImageContent(type="image", data=b64, mimeType=mime))
+    return parts
 
 
 def _knowledge_collection_path(input: KnowledgeScopeInput) -> str:

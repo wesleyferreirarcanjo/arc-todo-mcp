@@ -15,7 +15,7 @@ class ToolDefinition:
     default_enabled: bool
     sort_order: int
     input_model: type[BaseModel] | None
-    handler: Callable[..., Coroutine[Any, Any, str]]
+    handler: Callable[..., Coroutine[Any, Any, Any]]
 
 
 MCP_TOOL_REGISTRY: list[ToolDefinition] = []
@@ -30,10 +30,10 @@ def register_tool(
     default_enabled: bool = True,
     sort_order: int = 0,
     input_model: type[BaseModel] | None = None,
-) -> Callable[[Callable[..., Coroutine[Any, Any, str]]], Callable[..., Coroutine[Any, Any, str]]]:
+) -> Callable[[Callable[..., Coroutine[Any, Any, Any]]], Callable[..., Coroutine[Any, Any, Any]]]:
     def decorator(
-        handler: Callable[..., Coroutine[Any, Any, str]],
-    ) -> Callable[..., Coroutine[Any, Any, str]]:
+        handler: Callable[..., Coroutine[Any, Any, Any]],
+    ) -> Callable[..., Coroutine[Any, Any, Any]]:
         MCP_TOOL_REGISTRY.append(
             ToolDefinition(
                 key=key,
@@ -172,6 +172,14 @@ class GetTaskInput(ProjectTaskScopeInput):
     task_id: str = Field(
         description="Task UUID or friendly ID like arc-1 or #arc-1",
     )
+
+
+class AddTaskCommentInput(GetTaskInput):
+    body: str = Field(description="Comment text to post on the task")
+
+
+class DownloadTaskEvidenceInput(GetTaskInput):
+    evidence_id: str = Field(description="Task evidence (image/video) UUID")
 
 
 class CreateTaskInput(ProjectTaskScopeInput):

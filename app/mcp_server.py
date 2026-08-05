@@ -5,7 +5,7 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-from mcp.types import TextContent, Tool
+from mcp.types import ImageContent, TextContent, Tool
 from starlette.applications import Starlette
 from starlette.routing import Mount
 from pydantic import BaseModel
@@ -15,6 +15,8 @@ from app.tool_registry import MCP_TOOL_REGISTRY, ToolDefinition
 
 # Import handlers so @register_tool decorators populate MCP_TOOL_REGISTRY.
 import app.tools.handlers  # noqa: F401
+
+ToolContent = TextContent | ImageContent
 
 
 def _json_schema(model: type[BaseModel] | None) -> dict[str, Any]:
@@ -34,6 +36,12 @@ def _caller_token_from_request(server: Server) -> str | None:
         return None
     authorization = request.headers.get("authorization")
     return extract_bearer_from_authorization(authorization)
+
+
+def _as_tool_content(result: Any) -> list[ToolContent]:
+    if isinstance(result, list):
+        return result
+    return [TextContent(type="text", text=result)]
 
 
 def build_mcp_server(enabled_keys: set[str]) -> tuple[Server, StreamableHTTPSessionManager]:
@@ -61,7 +69,7 @@ def build_mcp_server(enabled_keys: set[str]) -> tuple[Server, StreamableHTTPSess
         ]
 
     @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    async def call_tool(name: str, arguments: dict[str, Any]) -> list[ToolContent]:
         tool = enabled_tools.get(name)
         if tool is None:
             raise ValueError(f"Tool '{name}' is not enabled")
@@ -73,7 +81,7 @@ def build_mcp_server(enabled_keys: set[str]) -> tuple[Server, StreamableHTTPSess
                 validated = tool.input_model.model_validate(arguments)
                 result = await tool.handler(validated)
 
-        return [TextContent(type="text", text=result)]
+        return _as_tool_content(result)
 
     session_manager = StreamableHTTPSessionManager(server)
     return server, session_manager
