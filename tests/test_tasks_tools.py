@@ -11,6 +11,7 @@ from app.tools.handlers import (
     download_task_evidence,
     list_task_comments,
     list_task_evidence,
+    list_task_history,
     list_tasks,
     update_task,
     add_task_comment,
@@ -386,6 +387,53 @@ async def test_list_task_evidence_calls_evidence_endpoint(api_client):
 
     assert route.called
     assert "icon-bug.png" in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_task_history_calls_history_endpoint(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/history"
+    ).mock(
+        return_value=Response(
+            200,
+            json=[
+                {
+                    "id": "h1",
+                    "taskId": task_id,
+                    "field": "isBug",
+                    "oldValue": "false",
+                    "newValue": "true",
+                    "changedById": "u1",
+                    "createdAt": "2026-08-05T12:00:00.000Z",
+                },
+                {
+                    "id": "h2",
+                    "taskId": task_id,
+                    "field": "bugReason",
+                    "oldValue": None,
+                    "newValue": "Falha no checklist item 2",
+                    "changedById": "u1",
+                    "createdAt": "2026-08-05T12:00:00.000Z",
+                },
+            ],
+        )
+    )
+
+    result = await list_task_history(
+        GetTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+        )
+    )
+
+    assert route.called
+    assert "isBug" in result
+    assert "Falha no checklist item 2" in result
 
 
 @pytest.mark.asyncio

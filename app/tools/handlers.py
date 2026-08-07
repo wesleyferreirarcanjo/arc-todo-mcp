@@ -549,6 +549,26 @@ async def download_task_evidence(input: DownloadTaskEvidenceInput) -> list[Any]:
     return parts
 
 
+@register_tool(
+    key="list_task_history",
+    group="tasks",
+    display_name="List task history",
+    description=(
+        "List field-change history for a task (title, description, dueDate, isBug, bugReason). "
+        "Supports friendly task IDs."
+    ),
+    sort_order=30,
+    input_model=GetTaskInput,
+)
+async def list_task_history(input: GetTaskInput) -> str:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    data = await arc_todo_client.request(
+        "GET",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/history",
+    )
+    return arc_todo_client.format_result(data)
+
+
 def _knowledge_collection_path(input: KnowledgeScopeInput) -> str:
     scope = input.scope
     if scope == "general":
