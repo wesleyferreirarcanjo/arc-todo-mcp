@@ -14,6 +14,7 @@ from app.tool_registry import (
     AddTaskCommentInput,
     CreateOrganizationUserInput,
     CreateKnowledgeInput,
+    CreateProjectDiagramInput,
     CreateProjectInput,
     CreateTaskInput,
     DeleteAttachmentInput,
@@ -22,6 +23,7 @@ from app.tool_registry import (
     EmptyInput,
     GetOrganizationInput,
     GetPersonInput,
+    GetProjectDiagramInput,
     GetProjectInput,
     GetTaskInput,
     KnowledgeEntryInput,
@@ -30,11 +32,13 @@ from app.tool_registry import (
     ListOrganizationActivityInput,
     ListOrganizationMembersInput,
     ListPersonsInput,
+    ListProjectDiagramsInput,
     ListProjectsInput,
     ListTasksInput,
     ProjectTaskScopeInput,
     RetrieveKnowledgeInput,
     UpdateKnowledgeInput,
+    UpdateProjectDiagramInput,
     UpdateTaskInput,
     UploadAttachmentInput,
     register_tool,
@@ -824,3 +828,107 @@ async def retrieve_knowledge(input: RetrieveKnowledgeInput) -> str:
             return arc_todo_client.format_result({"error": "RAG is disabled"})
         raise ValueError(str(exc)) from exc
     return arc_todo_client.format_result(data)
+
+
+def _diagrams_collection_path(organization_id: str, project_id: str) -> str:
+    return f"/organizations/{organization_id}/projects/{project_id}/diagrams"
+
+
+def _diagram_path(organization_id: str, project_id: str, diagram_id: str) -> str:
+    return f"{_diagrams_collection_path(organization_id, project_id)}/{diagram_id}"
+
+
+@register_tool(
+    key="list_project_diagrams",
+    group="diagrams",
+    display_name="List project diagrams",
+    description="List Excalidraw diagrams for a project (id, title, thumbnail, timestamps).",
+    sort_order=50,
+    input_model=ListProjectDiagramsInput,
+)
+async def list_project_diagrams(input: ListProjectDiagramsInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _diagrams_collection_path(input.organization_id, input.project_id),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="get_project_diagram",
+    group="diagrams",
+    display_name="Get project diagram",
+    description="Fetch one project diagram including Excalidraw scene_json.",
+    sort_order=51,
+    input_model=GetProjectDiagramInput,
+)
+async def get_project_diagram(input: GetProjectDiagramInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _diagram_path(input.organization_id, input.project_id, input.diagram_id),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="create_project_diagram",
+    group="diagrams",
+    display_name="Create project diagram",
+    description="Create a project Excalidraw diagram with a title and optional scene_json.",
+    sort_order=52,
+    input_model=CreateProjectDiagramInput,
+)
+async def create_project_diagram(input: CreateProjectDiagramInput) -> str:
+    body: dict[str, Any] = {"title": input.title}
+    if input.scene_json is not None:
+        body["sceneJson"] = input.scene_json
+    if input.thumbnail is not None:
+        body["thumbnail"] = input.thumbnail
+    data = await arc_todo_client.request(
+        "POST",
+        _diagrams_collection_path(input.organization_id, input.project_id),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="update_project_diagram",
+    group="diagrams",
+    display_name="Update project diagram",
+    description="Update a project diagram title and/or Excalidraw scene_json.",
+    sort_order=53,
+    input_model=UpdateProjectDiagramInput,
+)
+async def update_project_diagram(input: UpdateProjectDiagramInput) -> str:
+    body = {
+        k: v
+        for k, v in {
+            "title": input.title,
+            "sceneJson": input.scene_json,
+            "thumbnail": input.thumbnail,
+        }.items()
+        if v is not None
+    }
+    data = await arc_todo_client.request(
+        "PATCH",
+        _diagram_path(input.organization_id, input.project_id, input.diagram_id),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="delete_project_diagram",
+    group="diagrams",
+    display_name="Delete project diagram",
+    description="Delete a project Excalidraw diagram.",
+    sort_order=54,
+    input_model=GetProjectDiagramInput,
+)
+async def delete_project_diagram(input: GetProjectDiagramInput) -> str:
+    await arc_todo_client.request(
+        "DELETE",
+        _diagram_path(input.organization_id, input.project_id, input.diagram_id),
+    )
+    return '{"deleted": true}'

@@ -354,3 +354,36 @@ class RetrieveKnowledgeInput(BaseModel):
         default=None,
         description="Token budget for context (default from RAG settings)",
     )
+
+
+class ListProjectDiagramsInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    project_id: str = Field(description="Project UUID")
+
+
+class GetProjectDiagramInput(ListProjectDiagramsInput):
+    diagram_id: str = Field(description="Project diagram UUID")
+
+
+class CreateProjectDiagramInput(ListProjectDiagramsInput):
+    title: str = Field(description="Diagram title (required, non-empty)")
+    scene_json: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional Excalidraw scene JSON (elements, appState, files)",
+    )
+    thumbnail: str | None = Field(
+        default=None,
+        description="Optional base64 data-URL thumbnail for list cards",
+    )
+
+
+class UpdateProjectDiagramInput(GetProjectDiagramInput):
+    title: str | None = Field(default=None, description="New diagram title")
+    scene_json: dict[str, Any] | None = Field(
+        default=None,
+        description="Excalidraw scene JSON (elements, appState, files)",
+    )
+    thumbnail: str | None = Field(
+        default=None,
+        description="Optional base64 data-URL thumbnail for list cards",
+    )
