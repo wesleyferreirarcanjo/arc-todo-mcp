@@ -416,7 +416,7 @@ async def create_task(input: CreateTaskInput) -> str:
     key="update_task",
     group="tasks",
     display_name="Update task",
-    description="Update a task in a project. Set parent_task_id to attach as subtask or null to detach. Setting is_bug=true flags the task as a bug and moves it to todo.",
+    description="Update a task in a project. Set parent_task_id to attach as subtask or null to detach. Setting is_bug=true reports an open bug (requires bug_reason) and moves it to todo; is_bug=false marks the bug solved.",
     sort_order=24,
     input_model=UpdateTaskInput,
 )

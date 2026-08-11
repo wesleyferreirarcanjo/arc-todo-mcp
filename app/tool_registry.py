@@ -217,15 +217,20 @@ class CreateTaskInput(ProjectTaskScopeInput):
     )
     is_bug: bool | None = Field(
         default=None,
-        description="Flag task as bug. Setting true moves status to todo.",
+        description=(
+            "Report or solve a bug. true = mark as open bug (requires bug_reason, "
+            "moves status to todo); false = mark bug solved."
+        ),
     )
     bug_reason: str | None = Field(
         default=None,
-        description="Optional reason when flagging a task as bug",
+        description="Required non-blank reason when reporting a bug (is_bug=true)",
     )
     qa_checklist_state: dict[str, Any] | None = Field(
         default=None,
-        description="QA checklist progress with checkedItemIds array",
+        description=(
+            "QA checklist state: checkedItemIds, buggedItemIds, buggedItemNotes"
+        ),
     )
 
 
@@ -264,15 +269,20 @@ class UpdateTaskInput(GetTaskInput):
     )
     is_bug: bool | None = Field(
         default=None,
-        description="Flag task as bug. Setting true moves status to todo.",
+        description=(
+            "Report or solve a bug. true = mark as open bug (requires bug_reason, "
+            "moves status to todo); false = mark bug solved."
+        ),
     )
     bug_reason: str | None = Field(
         default=None,
-        description="Optional reason when flagging a task as bug",
+        description="Required non-blank reason when reporting a bug (is_bug=true)",
     )
     qa_checklist_state: dict[str, Any] | None = Field(
         default=None,
-        description="QA checklist progress with checkedItemIds array",
+        description=(
+            "QA checklist state: checkedItemIds, buggedItemIds, buggedItemNotes"
+        ),
     )
 
 
