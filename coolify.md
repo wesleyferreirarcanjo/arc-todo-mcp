@@ -21,8 +21,8 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 | Repository | [wesleyferreirarcanjo/arc-todo-mcp](https://github.com/wesleyferreirarcanjo/arc-todo-mcp) |
 | Branch | `main` |
 | Build pack | Dockerfile |
-| Public URL | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io` |
-| MCP endpoint | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp/` (trailing slash required for Cursor) |
+| Public URL | `https://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io` |
+| MCP endpoint | `https://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp/` (trailing slash required for Cursor) |
 | Health check | `GET /health` → `{ "status": "ok" }` |
 
 ### Build / run
@@ -37,11 +37,11 @@ Python FastAPI MCP server deployed in Coolify project **`arc-todo`** on server *
 
 | Resource | UUID | Notes |
 | --- | --- | --- |
-| API `arc-todo-api` | `lmsx2avrg1k29ex12w6e3gce` | `http://lmsx2avrg1k29ex12w6e3gce.72.60.59.203.sslip.io` |
+| API `arc-todo-api` | `lmsx2avrg1k29ex12w6e3gce` | `https://lmsx2avrg1k29ex12w6e3gce.72.60.59.203.sslip.io` |
 | Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | MCP tool settings UI |
 | PostgreSQL `arc-todo-postgres-pgvector` | `x420nshn1p0cjzlhomi0cbnk` | Stores MCP tool settings via API |
-| Chatbot `arc-todo-chatbot` | `nyagev0aqp4qow1zri6wise5` | `http://nyagev0aqp4qow1zri6wise5.72.60.59.203.sslip.io` |
-| RAG `arc-todo-rag` | `tqfgi4rhtndy3xtgdep04xnd` | `http://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io` |
+| Chatbot `arc-todo-chatbot` | `nyagev0aqp4qow1zri6wise5` | `https://nyagev0aqp4qow1zri6wise5.72.60.59.203.sslip.io` |
+| RAG `arc-todo-rag` | `tqfgi4rhtndy3xtgdep04xnd` | `https://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io` |
 | MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Used by API only |
 
 ## Environment variables (production)
@@ -56,7 +56,7 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `ARC_TODO_PASSWORD` | *(redacted — Coolify secret)* |
 | `ARC_TODO_ACCESS_TOKEN` | Optional bearer token instead of username/password |
 | `MCP_TOOL_SETTINGS_REFRESH_ON_START` | `true` |
-| `RAG_API_BASE_URL` | RAG service URL (e.g. `http://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io`) |
+| `RAG_API_BASE_URL` | RAG service URL (e.g. `https://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io`) |
 | `RAG_TIMEOUT_SECONDS` | `30` |
 | `RAG_TOP_K` | `5` |
 | `RAG_MAX_CONTEXT_TOKENS` | `4000` |
