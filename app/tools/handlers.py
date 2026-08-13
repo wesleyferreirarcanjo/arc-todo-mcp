@@ -16,6 +16,7 @@ from app.tool_registry import (
     CreateKnowledgeInput,
     CreateProjectDiagramInput,
     CreateProjectInput,
+    CreateProjectWireframeInput,
     CreateTaskInput,
     DeleteAttachmentInput,
     DownloadAttachmentInput,
@@ -25,6 +26,7 @@ from app.tool_registry import (
     GetPersonInput,
     GetProjectDiagramInput,
     GetProjectInput,
+    GetProjectWireframeInput,
     GetTaskInput,
     KnowledgeEntryInput,
     KnowledgeScopeInput,
@@ -33,12 +35,14 @@ from app.tool_registry import (
     ListOrganizationMembersInput,
     ListPersonsInput,
     ListProjectDiagramsInput,
+    ListProjectWireframesInput,
     ListProjectsInput,
     ListTasksInput,
     ProjectTaskScopeInput,
     RetrieveKnowledgeInput,
     UpdateKnowledgeInput,
     UpdateProjectDiagramInput,
+    UpdateProjectWireframeInput,
     UpdateTaskInput,
     UploadAttachmentInput,
     register_tool,
@@ -930,5 +934,114 @@ async def delete_project_diagram(input: GetProjectDiagramInput) -> str:
     await arc_todo_client.request(
         "DELETE",
         _diagram_path(input.organization_id, input.project_id, input.diagram_id),
+    )
+    return '{"deleted": true}'
+
+
+def _wireframes_collection_path(organization_id: str, project_id: str) -> str:
+    return f"/organizations/{organization_id}/projects/{project_id}/wireframes"
+
+
+def _wireframe_path(
+    organization_id: str, project_id: str, wireframe_id: str
+) -> str:
+    return f"{_wireframes_collection_path(organization_id, project_id)}/{wireframe_id}"
+
+
+@register_tool(
+    key="list_project_wireframes",
+    group="wireframes",
+    display_name="List project wireframes",
+    description="List HTML wireframe prototypes for a project (id, title, timestamps; omits html).",
+    sort_order=60,
+    input_model=ListProjectWireframesInput,
+)
+async def list_project_wireframes(input: ListProjectWireframesInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _wireframes_collection_path(input.organization_id, input.project_id),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="get_project_wireframe",
+    group="wireframes",
+    display_name="Get project wireframe",
+    description="Fetch one project wireframe including the HTML document.",
+    sort_order=61,
+    input_model=GetProjectWireframeInput,
+)
+async def get_project_wireframe(input: GetProjectWireframeInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _wireframe_path(
+            input.organization_id, input.project_id, input.wireframe_id
+        ),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="create_project_wireframe",
+    group="wireframes",
+    display_name="Create project wireframe",
+    description="Create a project HTML wireframe with a title and optional html document.",
+    sort_order=62,
+    input_model=CreateProjectWireframeInput,
+)
+async def create_project_wireframe(input: CreateProjectWireframeInput) -> str:
+    body: dict[str, Any] = {"title": input.title}
+    if input.html is not None:
+        body["html"] = input.html
+    data = await arc_todo_client.request(
+        "POST",
+        _wireframes_collection_path(input.organization_id, input.project_id),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="update_project_wireframe",
+    group="wireframes",
+    display_name="Update project wireframe",
+    description="Update a project wireframe title and/or HTML document.",
+    sort_order=63,
+    input_model=UpdateProjectWireframeInput,
+)
+async def update_project_wireframe(input: UpdateProjectWireframeInput) -> str:
+    body = {
+        k: v
+        for k, v in {
+            "title": input.title,
+            "html": input.html,
+        }.items()
+        if v is not None
+    }
+    data = await arc_todo_client.request(
+        "PATCH",
+        _wireframe_path(
+            input.organization_id, input.project_id, input.wireframe_id
+        ),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="delete_project_wireframe",
+    group="wireframes",
+    display_name="Delete project wireframe",
+    description="Delete a project HTML wireframe.",
+    sort_order=64,
+    input_model=GetProjectWireframeInput,
+)
+async def delete_project_wireframe(input: GetProjectWireframeInput) -> str:
+    await arc_todo_client.request(
+        "DELETE",
+        _wireframe_path(
+            input.organization_id, input.project_id, input.wireframe_id
+        ),
     )
     return '{"deleted": true}'

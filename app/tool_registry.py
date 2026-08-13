@@ -387,3 +387,28 @@ class UpdateProjectDiagramInput(GetProjectDiagramInput):
         default=None,
         description="Optional base64 data-URL thumbnail for list cards",
     )
+
+
+class ListProjectWireframesInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    project_id: str = Field(description="Project UUID")
+
+
+class GetProjectWireframeInput(ListProjectWireframesInput):
+    wireframe_id: str = Field(description="Project wireframe UUID")
+
+
+class CreateProjectWireframeInput(ListProjectWireframesInput):
+    title: str = Field(description="Wireframe title (required, non-empty)")
+    html: str | None = Field(
+        default=None,
+        description="Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted → two-screen starter.",
+    )
+
+
+class UpdateProjectWireframeInput(GetProjectWireframeInput):
+    title: str | None = Field(default=None, description="New wireframe title")
+    html: str | None = Field(
+        default=None,
+        description="HTML document (inline CSS/JS; may contain several #page- sections)",
+    )
