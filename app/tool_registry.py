@@ -427,7 +427,7 @@ class CreateNameSessionInput(ListProjectNameSessionsInput):
     title: str = Field(description="Session title (required, non-empty)")
     naming_goal: str | None = Field(
         default=None,
-        description="Optional naming goal: public_product, company, feature, api, internal_codename, campaign",
+        description="Optional naming goal: public_product, company, feature, api, internal_codename, campaign. Omitted defaults to public_product.",
     )
     product_description: dict[str, Any] | None = Field(
         default=None,
