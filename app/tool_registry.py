@@ -412,3 +412,58 @@ class UpdateProjectWireframeInput(GetProjectWireframeInput):
         default=None,
         description="HTML document (inline CSS/JS; may contain several #page- sections)",
     )
+
+
+class ListProjectNameSessionsInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    project_id: str = Field(description="Project UUID")
+
+
+class GetNameSessionInput(ListProjectNameSessionsInput):
+    name_session_id: str = Field(description="Name session UUID")
+
+
+class CreateNameSessionInput(ListProjectNameSessionsInput):
+    title: str = Field(description="Session title (required, non-empty)")
+    naming_goal: str | None = Field(
+        default=None,
+        description="Optional naming goal: public_product, company, feature, api, internal_codename, campaign",
+    )
+    product_description: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional product-description canvas JSON",
+    )
+
+
+class UpdateNameSessionInput(GetNameSessionInput):
+    title: str | None = Field(default=None, description="New session title")
+    naming_goal: str | None = Field(default=None, description="Naming goal")
+    product_description: dict[str, Any] | None = Field(
+        default=None,
+        description="Product-description canvas JSON",
+    )
+
+
+class NameCandidateItemInput(BaseModel):
+    name: str = Field(description="Candidate name")
+    family: str | None = Field(default=None, description="Optional name family")
+    lane: str | None = Field(default=None, description="Optional lane id")
+    rationale: str | None = Field(default=None, description="Optional rationale")
+
+
+class AddNameCandidatesInput(GetNameSessionInput):
+    candidates: list[NameCandidateItemInput] = Field(
+        description="Candidates to add (max 20)",
+        min_length=1,
+        max_length=20,
+    )
+
+
+class CheckNameCandidateInput(GetNameSessionInput):
+    candidate_id: str = Field(description="Candidate UUID in the session")
+
+
+class RecommendNameCandidateInput(CheckNameCandidateInput):
+    decision_note: str = Field(
+        description="Why this name is recommended. Required when evidence is unresolved.",
+    )

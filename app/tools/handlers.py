@@ -36,6 +36,13 @@ from app.tool_registry import (
     ListPersonsInput,
     ListProjectDiagramsInput,
     ListProjectWireframesInput,
+    ListProjectNameSessionsInput,
+    GetNameSessionInput,
+    CreateNameSessionInput,
+    UpdateNameSessionInput,
+    AddNameCandidatesInput,
+    CheckNameCandidateInput,
+    RecommendNameCandidateInput,
     ListProjectsInput,
     ListTasksInput,
     ProjectTaskScopeInput,
@@ -1045,3 +1052,182 @@ async def delete_project_wireframe(input: GetProjectWireframeInput) -> str:
         ),
     )
     return '{"deleted": true}'
+
+
+def _name_sessions_collection_path(organization_id: str, project_id: str) -> str:
+    return f"/organizations/{organization_id}/projects/{project_id}/name-sessions"
+
+
+def _name_session_path(
+    organization_id: str, project_id: str, name_session_id: str
+) -> str:
+    return f"{_name_sessions_collection_path(organization_id, project_id)}/{name_session_id}"
+
+
+@register_tool(
+    key="list_project_name_sessions",
+    group="names",
+    display_name="List project name sessions",
+    description="List naming sessions for a project (id, title, recommendedName, timestamps; omits bulky candidates).",
+    sort_order=70,
+    input_model=ListProjectNameSessionsInput,
+)
+async def list_project_name_sessions(input: ListProjectNameSessionsInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _name_sessions_collection_path(input.organization_id, input.project_id),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="get_name_session",
+    group="names",
+    display_name="Get name session",
+    description="Fetch one naming session including product description, lanes, candidates, evidence, and recommendation.",
+    sort_order=71,
+    input_model=GetNameSessionInput,
+)
+async def get_name_session(input: GetNameSessionInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _name_session_path(
+            input.organization_id, input.project_id, input.name_session_id
+        ),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="create_name_session",
+    group="names",
+    display_name="Create name session",
+    description="Create a project naming session with a required title.",
+    sort_order=72,
+    input_model=CreateNameSessionInput,
+)
+async def create_name_session(input: CreateNameSessionInput) -> str:
+    body: dict[str, Any] = {"title": input.title}
+    if input.naming_goal is not None:
+        body["namingGoal"] = input.naming_goal
+    if input.product_description is not None:
+        body["productDescription"] = input.product_description
+    data = await arc_todo_client.request(
+        "POST",
+        _name_sessions_collection_path(input.organization_id, input.project_id),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="update_name_session",
+    group="names",
+    display_name="Update name session",
+    description="Update naming session title, goal, or product description.",
+    sort_order=73,
+    input_model=UpdateNameSessionInput,
+)
+async def update_name_session(input: UpdateNameSessionInput) -> str:
+    body = {
+        k: v
+        for k, v in {
+            "title": input.title,
+            "namingGoal": input.naming_goal,
+            "productDescription": input.product_description,
+        }.items()
+        if v is not None
+    }
+    data = await arc_todo_client.request(
+        "PATCH",
+        _name_session_path(
+            input.organization_id, input.project_id, input.name_session_id
+        ),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="add_name_candidates",
+    group="names",
+    display_name="Add name candidates",
+    description="Add up to 20 name candidates to a session. Source is recorded as MCP. Do not claim trademark or legal clearance.",
+    sort_order=74,
+    input_model=AddNameCandidatesInput,
+)
+async def add_name_candidates(input: AddNameCandidatesInput) -> str:
+    body = {
+        "source": "mcp",
+        "candidates": [
+            {
+                k: v
+                for k, v in {
+                    "name": item.name,
+                    "family": item.family,
+                    "laneId": item.lane,
+                    "rationale": item.rationale,
+                }.items()
+                if v is not None
+            }
+            for item in input.candidates
+        ],
+    }
+    data = await arc_todo_client.request(
+        "POST",
+        f"{_name_session_path(input.organization_id, input.project_id, input.name_session_id)}/candidates",
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="check_name_candidate",
+    group="names",
+    display_name="Check name candidate",
+    description="Run DNS/RDAP checks for a candidate. Does not register or buy a domain.",
+    sort_order=75,
+    input_model=CheckNameCandidateInput,
+)
+async def check_name_candidate(input: CheckNameCandidateInput) -> str:
+    session = await arc_todo_client.request(
+        "GET",
+        _name_session_path(
+            input.organization_id, input.project_id, input.name_session_id
+        ),
+    )
+    candidates = session.get("candidates") if isinstance(session, dict) else None
+    name = None
+    if isinstance(candidates, list):
+        for item in candidates:
+            if isinstance(item, dict) and item.get("id") == input.candidate_id:
+                name = item.get("name")
+                break
+    if not name:
+        return '{"error": "Candidate not found"}'
+    data = await arc_todo_client.request(
+        "POST",
+        f"{_name_session_path(input.organization_id, input.project_id, input.name_session_id)}/check",
+        json_body={"name": name},
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="recommend_name_candidate",
+    group="names",
+    display_name="Recommend name candidate",
+    description="Recommend a candidate with a decision note. Never claim trademark or legal clearance.",
+    sort_order=76,
+    input_model=RecommendNameCandidateInput,
+)
+async def recommend_name_candidate(input: RecommendNameCandidateInput) -> str:
+    data = await arc_todo_client.request(
+        "POST",
+        f"{_name_session_path(input.organization_id, input.project_id, input.name_session_id)}/recommend",
+        json_body={
+            "candidateId": input.candidate_id,
+            "decisionNote": input.decision_note,
+        },
+    )
+    return arc_todo_client.format_result(data)
