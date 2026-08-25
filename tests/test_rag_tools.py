@@ -176,4 +176,4 @@ async def test_retrieve_knowledge_rag_disabled(rag_env, caller_auth):
 
     result = await retrieve_knowledge(RetrieveKnowledgeInput(question="test"))
 
-    assert '"error": "RAG is disabled"' in result
+    assert '"error":"RAG is disabled"' in result

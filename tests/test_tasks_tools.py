@@ -9,6 +9,8 @@ from app.tools.handlers import (
     create_task,
     delete_project,
     download_task_evidence,
+    get_task,
+    list_project_tasks,
     list_task_comments,
     list_task_evidence,
     list_task_history,
@@ -22,6 +24,7 @@ from app.tool_registry import (
     DownloadTaskEvidenceInput,
     GetProjectInput,
     GetTaskInput,
+    ListProjectTasksInput,
     ListTasksInput,
     UpdateTaskInput,
 )
@@ -476,4 +479,136 @@ async def test_download_task_evidence_returns_image_content(api_client):
     assert "contentBase64" not in result[0].text
     assert isinstance(result[1], ImageContent)
     assert result[1].mimeType == "image/png"
+
+
+FAT_TASK = {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "displayId": "#arc-1",
+    "title": "Fix login freeze",
+    "description": "duplicate alias of business",
+    "businessDescription": "Users cannot sign in",
+    "planCodeDescription": "Patch LoginPage.tsx",
+    "testDescription": "Abrir /login e tentar entrar",
+    "status": "todo",
+    "criticity": "high",
+    "category": "coding",
+    "isBug": True,
+    "bugReason": "Button stuck",
+    "qaChecklistState": {"checkedItemIds": ["item-1"]},
+    "assignee": {"id": "u1", "username": "admin"},
+    "createdById": "u1",
+    "subtasks": [
+        {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "displayId": "#arc-2",
+            "title": "Wire UI",
+            "status": "todo",
+            "isBug": False,
+            "planCodeDescription": "child plan should not leak",
+            "testDescription": "child qa should not leak",
+        }
+    ],
+}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_task_default_plan_is_compact_and_omits_qa(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = FAT_TASK["id"]
+    respx.get("http://api.test/tasks/resolve").mock(
+        return_value=Response(
+            200,
+            json={
+                "id": task_id,
+                "displayId": "#arc-1",
+                "taskNumber": 1,
+                "organizationId": org_id,
+                "projectId": project_id,
+                "title": FAT_TASK["title"],
+            },
+        )
+    )
+    respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+    ).mock(return_value=Response(200, json=FAT_TASK))
+
+    result = await get_task(GetTaskInput(task_id="#arc-1"))
+
+    assert "\n" not in result
+    assert ": " not in result
+    assert "Patch LoginPage.tsx" in result
+    assert "Users cannot sign in" in result
+    assert "Abrir /login" not in result
+    assert "duplicate alias" not in result
+    assert "Button stuck" not in result
+    assert "child plan should not leak" not in result
+    assert "#arc-2" in result
+    assert '"isBug":true' in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_task_include_qa_returns_test_description(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = FAT_TASK["id"]
+    respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+    ).mock(return_value=Response(200, json=FAT_TASK))
+
+    result = await get_task(
+        GetTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            include="qa",
+        )
+    )
+
+    assert "Abrir /login" in result
+    assert "Button stuck" in result
+    assert "Patch LoginPage.tsx" not in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_tasks_default_summary_omits_descriptions(api_client):
+    respx.get("http://api.test/tasks").mock(
+        return_value=Response(200, json=[FAT_TASK])
+    )
+
+    result = await list_tasks(ListTasksInput())
+
+    assert "Users cannot sign in" not in result
+    assert "Patch LoginPage.tsx" not in result
+    assert "Abrir /login" not in result
+    assert "Fix login freeze" in result
+    assert '"isBug":true' in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_project_tasks_default_summary(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks"
+    ).mock(return_value=Response(200, json=[FAT_TASK]))
+
+    result = await list_project_tasks(
+        ListProjectTasksInput(organization_id=org_id, project_id=project_id)
+    )
+
+    assert "Patch LoginPage.tsx" not in result
+    assert "Fix login freeze" in result
+
+
+@pytest.mark.asyncio
+async def test_get_task_uuid_without_scope_raises(api_client):
+    with pytest.raises(ValueError, match="organization_id and project_id are required"):
+        await get_task(
+            GetTaskInput(task_id="22222222-2222-2222-2222-222222222222")
+        )
 

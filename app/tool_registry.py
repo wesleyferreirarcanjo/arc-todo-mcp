@@ -161,6 +161,14 @@ class ListTasksInput(BaseModel):
         default=None,
         description="Filter tasks flagged as bugs",
     )
+    include: str = Field(
+        default="summary",
+        description=(
+            "summary | plan | qa | full. Default summary. "
+            "summary=ids/flags/subtask stubs; plan=+business+planCode; "
+            "qa=+testDescription+checklist+bug fields; full=all except duplicate description."
+        ),
+    )
 
 
 class ProjectTaskScopeInput(BaseModel):
@@ -168,17 +176,53 @@ class ProjectTaskScopeInput(BaseModel):
     project_id: str
 
 
-class GetTaskInput(ProjectTaskScopeInput):
+class ListProjectTasksInput(ProjectTaskScopeInput):
+    include: str = Field(
+        default="summary",
+        description=(
+            "summary | plan | qa | full. Default summary. "
+            "summary=ids/flags/subtask stubs; plan=+business+planCode; "
+            "qa=+testDescription+checklist+bug fields; full=all except duplicate description."
+        ),
+    )
+
+
+class OptionalTaskScopeInput(BaseModel):
+    organization_id: str | None = Field(
+        default=None,
+        description=(
+            "Organization UUID. Required when task_id is a UUID; "
+            "omit for friendly IDs like arc-1 or #arc-1."
+        ),
+    )
+    project_id: str | None = Field(
+        default=None,
+        description=(
+            "Project UUID. Required when task_id is a UUID; "
+            "omit for friendly IDs like arc-1 or #arc-1."
+        ),
+    )
     task_id: str = Field(
         description="Task UUID or friendly ID like arc-1 or #arc-1",
     )
 
 
-class AddTaskCommentInput(GetTaskInput):
+class GetTaskInput(OptionalTaskScopeInput):
+    include: str = Field(
+        default="plan",
+        description=(
+            "summary | plan | qa | full. Default plan (business + plan/code, no QA essay). "
+            "summary=ids/flags/subtask stubs; qa=+testDescription+checklist+bug fields; "
+            "full=all except duplicate description."
+        ),
+    )
+
+
+class AddTaskCommentInput(OptionalTaskScopeInput):
     body: str = Field(description="Comment text to post on the task")
 
 
-class DownloadTaskEvidenceInput(GetTaskInput):
+class DownloadTaskEvidenceInput(OptionalTaskScopeInput):
     evidence_id: str = Field(description="Task evidence (image/video) UUID")
 
 
@@ -232,9 +276,16 @@ class CreateTaskInput(ProjectTaskScopeInput):
             "QA checklist state: checkedItemIds, buggedItemIds, buggedItemNotes"
         ),
     )
+    include: str = Field(
+        default="summary",
+        description=(
+            "Response shape: summary | plan | qa | full. Default summary "
+            "(the agent already sent the text)."
+        ),
+    )
 
 
-class UpdateTaskInput(GetTaskInput):
+class UpdateTaskInput(OptionalTaskScopeInput):
     title: str | None = None
     description: str | None = None
     business_description: str | None = Field(
@@ -282,6 +333,13 @@ class UpdateTaskInput(GetTaskInput):
         default=None,
         description=(
             "QA checklist state: checkedItemIds, buggedItemIds, buggedItemNotes"
+        ),
+    )
+    include: str = Field(
+        default="summary",
+        description=(
+            "Response shape: summary | plan | qa | full. Default summary "
+            "(the agent already sent the text)."
         ),
     )
 

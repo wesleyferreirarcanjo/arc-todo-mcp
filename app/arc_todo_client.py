@@ -152,7 +152,7 @@ class ArcTodoClient:
 
     @staticmethod
     def format_result(data: Any) -> str:
-        return json.dumps(data, indent=2, default=str)
+        return json.dumps(data, separators=(",", ":"), default=str)
 
 
 arc_todo_client = ArcTodoClient()

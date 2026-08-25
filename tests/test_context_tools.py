@@ -39,5 +39,5 @@ async def test_create_project_calls_api(monkeypatch, caller_auth):
 
     assert route.called
     assert route.calls[0].request.headers["Authorization"] == "Bearer token-abc"
-    assert '"name": "arc-todo"' in result
-    assert '"color": "#8778a3"' in result
+    assert '"name":"arc-todo"' in result
+    assert '"color":"#8778a3"' in result

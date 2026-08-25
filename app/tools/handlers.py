@@ -9,6 +9,7 @@ from app.arc_todo_client import arc_todo_client
 from app.caller_auth import require_caller_token
 from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
+from app.task_include import normalize_include, project_payload
 from app.tool_registry import (
     AddOrganizationMemberInput,
     AddTaskCommentInput,
@@ -43,9 +44,10 @@ from app.tool_registry import (
     AddNameCandidatesInput,
     CheckNameCandidateInput,
     RecommendNameCandidateInput,
+    ListProjectTasksInput,
     ListProjectsInput,
     ListTasksInput,
-    ProjectTaskScopeInput,
+    OptionalTaskScopeInput,
     RetrieveKnowledgeInput,
     UpdateKnowledgeInput,
     UpdateProjectDiagramInput,
@@ -350,7 +352,10 @@ def _task_body(input: CreateTaskInput | UpdateTaskInput) -> dict:
     key="list_tasks",
     group="tasks",
     display_name="List tasks",
-    description="List tasks across organizations with optional filters including parent_task_id.",
+    description=(
+        "List tasks with optional filters including parent_task_id. "
+        "Default include=summary (no description bodies). Use include=plan to fetch plans."
+    ),
     sort_order=20,
     input_model=ListTasksInput,
 )
@@ -369,43 +374,49 @@ async def list_tasks(input: ListTasksInput) -> str:
         if v is not None
     }
     data = await arc_todo_client.request("GET", "/tasks", params=params)
-    return arc_todo_client.format_result(data)
+    include = normalize_include(input.include, "summary")
+    return arc_todo_client.format_result(project_payload(data, include))
 
 
 @register_tool(
     key="list_project_tasks",
     group="tasks",
     display_name="List project tasks",
-    description="List tasks within a specific project.",
+    description=(
+        "List tasks within a specific project. Default include=summary (no description bodies)."
+    ),
     sort_order=21,
-    input_model=ProjectTaskScopeInput,
+    input_model=ListProjectTasksInput,
 )
-async def list_project_tasks(input: ProjectTaskScopeInput) -> str:
+async def list_project_tasks(input: ListProjectTasksInput) -> str:
     data = await arc_todo_client.request(
         "GET",
         f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks",
     )
-    return arc_todo_client.format_result(data)
+    include = normalize_include(input.include, "summary")
+    return arc_todo_client.format_result(project_payload(data, include))
 
 
 @register_tool(
     key="get_task",
     group="tasks",
     display_name="Get task",
-    description="Fetch one task by organization, project, and task ID.",
+    description=(
+        "Fetch one task. Default include=plan (business + plan/code, no QA essay). "
+        "Friendly IDs like #arc-1 do not need organization_id/project_id. "
+        "include: summary | plan | qa | full."
+    ),
     sort_order=22,
     input_model=GetTaskInput,
 )
 async def get_task(input: GetTaskInput) -> str:
-    resolved = await resolve_task_scope(arc_todo_client, input.task_id)
-    org_id = resolved.get("organization_id") or input.organization_id
-    project_id = resolved.get("project_id") or input.project_id
-    task_id = resolved["task_id"]
+    org_id, project_id, task_id = await _resolve_task_path(input)
     data = await arc_todo_client.request(
         "GET",
         f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
     )
-    return arc_todo_client.format_result(data)
+    include = normalize_include(input.include, "plan")
+    return arc_todo_client.format_result(project_payload(data, include))
 
 
 @register_tool(
@@ -426,7 +437,8 @@ async def create_task(input: CreateTaskInput) -> str:
         f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks",
         json_body=body,
     )
-    return arc_todo_client.format_result(data)
+    include = normalize_include(input.include, "summary")
+    return arc_todo_client.format_result(project_payload(data, include))
 
 
 @register_tool(
@@ -438,10 +450,7 @@ async def create_task(input: CreateTaskInput) -> str:
     input_model=UpdateTaskInput,
 )
 async def update_task(input: UpdateTaskInput) -> str:
-    resolved = await resolve_task_scope(arc_todo_client, input.task_id)
-    org_id = resolved.get("organization_id") or input.organization_id
-    project_id = resolved.get("project_id") or input.project_id
-    task_id = resolved["task_id"]
+    org_id, project_id, task_id = await _resolve_task_path(input)
     body = _task_body(input)
     if input.parent_task_id and not is_uuid(input.parent_task_id):
         parent = await resolve_task_scope(arc_todo_client, input.parent_task_id)
@@ -451,7 +460,8 @@ async def update_task(input: UpdateTaskInput) -> str:
         f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
         json_body=body,
     )
-    return arc_todo_client.format_result(data)
+    include = normalize_include(input.include, "summary")
+    return arc_todo_client.format_result(project_payload(data, include))
 
 
 @register_tool(
@@ -460,24 +470,26 @@ async def update_task(input: UpdateTaskInput) -> str:
     display_name="Delete task",
     description="Delete a task from a project.",
     sort_order=25,
-    input_model=GetTaskInput,
+    input_model=OptionalTaskScopeInput,
 )
-async def delete_task(input: GetTaskInput) -> str:
-    resolved = await resolve_task_scope(arc_todo_client, input.task_id)
-    org_id = resolved.get("organization_id") or input.organization_id
-    project_id = resolved.get("project_id") or input.project_id
-    task_id = resolved["task_id"]
+async def delete_task(input: OptionalTaskScopeInput) -> str:
+    org_id, project_id, task_id = await _resolve_task_path(input)
     await arc_todo_client.request(
         "DELETE",
         f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
     )
-    return '{"deleted": true}'
+    return '{"deleted":true}'
 
 
-async def _resolve_task_path(input: GetTaskInput) -> tuple[str, str, str]:
+async def _resolve_task_path(input: OptionalTaskScopeInput) -> tuple[str, str, str]:
     resolved = await resolve_task_scope(arc_todo_client, input.task_id)
     org_id = resolved.get("organization_id") or input.organization_id
     project_id = resolved.get("project_id") or input.project_id
+    if not org_id or not project_id:
+        raise ValueError(
+            "organization_id and project_id are required when task_id is a UUID. "
+            "For friendly IDs like #arc-1 they can be omitted."
+        )
     return org_id, project_id, resolved["task_id"]
 
 
@@ -485,11 +497,14 @@ async def _resolve_task_path(input: GetTaskInput) -> tuple[str, str, str]:
     key="list_task_comments",
     group="tasks",
     display_name="List task comments",
-    description="List comments on a task (QA notes, discussion). Supports friendly task IDs.",
+    description=(
+        "List comments on a task. Use only when is_bug is true or the user asked. "
+        "Supports friendly task IDs."
+    ),
     sort_order=26,
-    input_model=GetTaskInput,
+    input_model=OptionalTaskScopeInput,
 )
-async def list_task_comments(input: GetTaskInput) -> str:
+async def list_task_comments(input: OptionalTaskScopeInput) -> str:
     org_id, project_id, task_id = await _resolve_task_path(input)
     data = await arc_todo_client.request(
         "GET",
@@ -520,11 +535,14 @@ async def add_task_comment(input: AddTaskCommentInput) -> str:
     key="list_task_evidence",
     group="tasks",
     display_name="List task evidence",
-    description="List image/video evidence attachments on a task. Supports friendly task IDs.",
+    description=(
+        "List image/video evidence attachments on a task. "
+        "Use only when is_bug is true or the user asked. Supports friendly task IDs."
+    ),
     sort_order=28,
-    input_model=GetTaskInput,
+    input_model=OptionalTaskScopeInput,
 )
-async def list_task_evidence(input: GetTaskInput) -> str:
+async def list_task_evidence(input: OptionalTaskScopeInput) -> str:
     org_id, project_id, task_id = await _resolve_task_path(input)
     data = await arc_todo_client.request(
         "GET",
@@ -572,12 +590,12 @@ async def download_task_evidence(input: DownloadTaskEvidenceInput) -> list[Any]:
     display_name="List task history",
     description=(
         "List field-change history for a task (title, description, dueDate, isBug, bugReason). "
-        "Supports friendly task IDs."
+        "Use only when is_bug is true or the user asked. Supports friendly task IDs."
     ),
     sort_order=30,
-    input_model=GetTaskInput,
+    input_model=OptionalTaskScopeInput,
 )
-async def list_task_history(input: GetTaskInput) -> str:
+async def list_task_history(input: OptionalTaskScopeInput) -> str:
     org_id, project_id, task_id = await _resolve_task_path(input)
     data = await arc_todo_client.request(
         "GET",
