@@ -50,6 +50,8 @@ from app.tool_registry import (
     UpdateKnowledgeInput,
     UpdateProjectDiagramInput,
     UpdateProjectWireframeInput,
+    GetProjectQaInfoInput,
+    UpdateProjectQaInfoInput,
     UpdateTaskInput,
     UploadAttachmentInput,
     register_tool,
@@ -943,6 +945,73 @@ async def delete_project_diagram(input: GetProjectDiagramInput) -> str:
         _diagram_path(input.organization_id, input.project_id, input.diagram_id),
     )
     return '{"deleted": true}'
+
+
+def _qa_info_path(organization_id: str, project_id: str) -> str:
+    return f"/organizations/{organization_id}/projects/{project_id}/qa-info"
+
+
+@register_tool(
+    key="get_project_qa_info",
+    group="qa",
+    display_name="Get project QA info",
+    description="Fetch the project QA info profile (environments, test users, notes). Empty when none is saved yet.",
+    sort_order=80,
+    input_model=GetProjectQaInfoInput,
+)
+async def get_project_qa_info(input: GetProjectQaInfoInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _qa_info_path(input.organization_id, input.project_id),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="update_project_qa_info",
+    group="qa",
+    display_name="Update project QA info",
+    description="Create or replace the project QA info profile. Omit a field to keep the current value. No password field.",
+    sort_order=81,
+    input_model=UpdateProjectQaInfoInput,
+)
+async def update_project_qa_info(input: UpdateProjectQaInfoInput) -> str:
+    body: dict[str, Any] = {}
+    if input.environments is not None:
+        body["environments"] = [
+            {
+                key: value
+                for key, value in {
+                    "name": item.name,
+                    "url": item.url,
+                    "notes": item.notes,
+                }.items()
+                if value is not None
+            }
+            for item in input.environments
+        ]
+    if input.users is not None:
+        body["users"] = [
+            {
+                key: value
+                for key, value in {
+                    "label": item.label,
+                    "email": item.email,
+                    "howToSignIn": item.how_to_sign_in,
+                    "notes": item.notes,
+                }.items()
+                if value is not None
+            }
+            for item in input.users
+        ]
+    if input.notes is not None:
+        body["notes"] = input.notes
+    data = await arc_todo_client.request(
+        "PUT",
+        _qa_info_path(input.organization_id, input.project_id),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
 
 
 def _wireframes_collection_path(organization_id: str, project_id: str) -> str:

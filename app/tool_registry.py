@@ -467,3 +467,39 @@ class RecommendNameCandidateInput(CheckNameCandidateInput):
     decision_note: str = Field(
         description="Why this name is recommended. Required when evidence is unresolved.",
     )
+
+
+class GetProjectQaInfoInput(BaseModel):
+    organization_id: str = Field(description="Organization UUID")
+    project_id: str = Field(description="Project UUID")
+
+
+class QaEnvironmentInput(BaseModel):
+    name: str = Field(description="Environment name")
+    url: str = Field(description="http or https URL")
+    notes: str | None = Field(default=None, description="Optional notes")
+
+
+class QaUserInput(BaseModel):
+    label: str = Field(description="Role or label for the tester account")
+    email: str | None = Field(default=None, description="Optional email")
+    how_to_sign_in: str | None = Field(
+        default=None,
+        description="How to sign in, in words. Maps to howToSignIn. Do not send a password.",
+    )
+    notes: str | None = Field(default=None, description="Optional notes")
+
+
+class UpdateProjectQaInfoInput(GetProjectQaInfoInput):
+    environments: list[QaEnvironmentInput] | None = Field(
+        default=None,
+        description="Replace the environments list. Omit to keep the current list.",
+    )
+    users: list[QaUserInput] | None = Field(
+        default=None,
+        description="Replace the test-users list. Omit to keep the current list.",
+    )
+    notes: str | None = Field(
+        default=None,
+        description="Free-text navigation and conventions. Empty string clears. Omit to keep current.",
+    )
