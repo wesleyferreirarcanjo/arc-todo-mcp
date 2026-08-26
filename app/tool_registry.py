@@ -62,34 +62,47 @@ def registry_entry_dict(tool: ToolDefinition) -> dict[str, Any]:
     }
 
 
-class EmptyInput(BaseModel):
+ARC_TODO_TOKEN_DESCRIPTION = (
+    "Optional Arc Todo JWT when the HTTP connector drops Authorization "
+    "(Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix "
+    "optional. Omit when mcp.json already sends Authorization."
+)
+
+
+class CallerTokenInput(BaseModel):
+    arc_todo_token: str | None = Field(
+        default=None,
+        description=ARC_TODO_TOKEN_DESCRIPTION,
+    )
+
+
+class EmptyInput(CallerTokenInput):
     pass
 
 
-class SetCallerAuthInput(BaseModel):
+class SetCallerAuthInput(CallerTokenInput):
     token: str = Field(
         description=(
             "Arc Todo JWT from the web app (localStorage arc_todo_token) or the "
-            "arc_todo_token secret. Bearer prefix optional. Binds to this MCP "
-            "session so later tenant tools work when the HTTP connector drops "
-            "the Authorization header."
+            "arc_todo_token secret. Bearer prefix optional. Proves GET /auth/me; "
+            "Grok must still pass arc_todo_token on each later tenant call."
         )
     )
 
 
-class OrganizationIdInput(BaseModel):
+class OrganizationIdInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
 
 
-class GetOrganizationInput(BaseModel):
+class GetOrganizationInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
 
 
-class ListOrganizationMembersInput(BaseModel):
+class ListOrganizationMembersInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
 
 
-class CreateOrganizationUserInput(BaseModel):
+class CreateOrganizationUserInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     username: str
     password: str = Field(min_length=6)
@@ -99,7 +112,7 @@ class CreateOrganizationUserInput(BaseModel):
     )
 
 
-class AddOrganizationMemberInput(BaseModel):
+class AddOrganizationMemberInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     username: str
     role: str | None = Field(
@@ -108,18 +121,18 @@ class AddOrganizationMemberInput(BaseModel):
     )
 
 
-class ListOrganizationActivityInput(BaseModel):
+class ListOrganizationActivityInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     user_id: str | None = Field(default=None, description="Filter by actor user UUID")
     limit: int | None = Field(default=None, ge=1, le=100)
     offset: int | None = Field(default=None, ge=0)
 
 
-class ListProjectsInput(BaseModel):
+class ListProjectsInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
 
 
-class CreateProjectInput(BaseModel):
+class CreateProjectInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     name: str
     description: str | None = None
@@ -129,19 +142,19 @@ class CreateProjectInput(BaseModel):
     )
 
 
-class GetProjectInput(BaseModel):
+class GetProjectInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
 
 
-class ListPersonsInput(BaseModel):
+class ListPersonsInput(CallerTokenInput):
     organization_id: str | None = Field(
         default=None,
         description="Optional organization UUID. Omit for global persons.",
     )
 
 
-class GetPersonInput(BaseModel):
+class GetPersonInput(CallerTokenInput):
     organization_id: str | None = Field(
         default=None,
         description="Optional organization UUID. Omit for global person lookup.",
@@ -149,7 +162,7 @@ class GetPersonInput(BaseModel):
     person_id: str = Field(description="Person UUID")
 
 
-class ListTasksInput(BaseModel):
+class ListTasksInput(CallerTokenInput):
     organization_id: str | None = Field(
         default=None,
         description="Organization UUID or slug. Omit to use the last board from this MCP session.",
@@ -207,12 +220,12 @@ class ListTasksInput(BaseModel):
     )
 
 
-class ProjectTaskScopeInput(BaseModel):
+class ProjectTaskScopeInput(CallerTokenInput):
     organization_id: str
     project_id: str
 
 
-class ListProjectTasksInput(BaseModel):
+class ListProjectTasksInput(CallerTokenInput):
     organization_id: str | None = Field(
         default=None,
         description="Organization UUID or slug. Optional when project is an acronym/slug or after get_task in this session.",
@@ -253,7 +266,7 @@ class ListProjectTasksInput(BaseModel):
     )
 
 
-class OptionalTaskScopeInput(BaseModel):
+class OptionalTaskScopeInput(CallerTokenInput):
     organization_id: str | None = Field(
         default=None,
         description=(
@@ -298,7 +311,7 @@ class MoveTaskInput(OptionalTaskScopeInput):
     )
 
 
-class CreateTaskInput(BaseModel):
+class CreateTaskInput(CallerTokenInput):
     organization_id: str | None = Field(
         default=None,
         description="Organization UUID or slug. Optional when project is an acronym/slug.",
@@ -428,7 +441,7 @@ class UpdateTaskInput(OptionalTaskScopeInput):
     )
 
 
-class KnowledgeScopeInput(BaseModel):
+class KnowledgeScopeInput(CallerTokenInput):
     scope: str = Field(description="general | organization | project | person")
     organization_id: str | None = None
     project_id: str | None = None
@@ -474,7 +487,7 @@ class DeleteAttachmentInput(DownloadAttachmentInput):
     pass
 
 
-class RetrieveKnowledgeInput(BaseModel):
+class RetrieveKnowledgeInput(CallerTokenInput):
     question: str = Field(description="Natural-language question to search indexed knowledge")
     organization_id: str | None = Field(
         default=None,
@@ -498,7 +511,7 @@ class RetrieveKnowledgeInput(BaseModel):
     )
 
 
-class ListProjectDiagramsInput(BaseModel):
+class ListProjectDiagramsInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
 
@@ -531,7 +544,7 @@ class UpdateProjectDiagramInput(GetProjectDiagramInput):
     )
 
 
-class ListProjectWireframesInput(BaseModel):
+class ListProjectWireframesInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
 
@@ -556,7 +569,7 @@ class UpdateProjectWireframeInput(GetProjectWireframeInput):
     )
 
 
-class ListProjectNameSessionsInput(BaseModel):
+class ListProjectNameSessionsInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
 
@@ -611,7 +624,7 @@ class RecommendNameCandidateInput(CheckNameCandidateInput):
     )
 
 
-class GetProjectQaInfoInput(BaseModel):
+class GetProjectQaInfoInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
 

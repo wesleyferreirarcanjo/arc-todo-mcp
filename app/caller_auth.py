@@ -15,15 +15,14 @@ _session_lock = threading.Lock()
 
 SESSION_ID_HEADER = "mcp-session-id"
 ALT_TOKEN_HEADERS = ("x-arc-todo-token", "x-api-key")
-SET_CALLER_AUTH_TOOL = "set_caller_auth"
 
 MISSING_CALLER_TOKEN_MESSAGE = (
     "Missing Authorization bearer token. "
     "Cursor IDE: set headers.Authorization to Bearer <jwt> in mcp.json. "
-    "Grok/cloud HTTP connectors often drop Authorization on tools/call — "
-    "call set_caller_auth with the JWT from the arc_todo_token secret "
-    "(same MCP session), or send header X-Arc-Todo-Token. "
-    "A secret-card file is not sent as this header."
+    "Grok/cloud HTTP connectors drop Authorization and do not reuse MCP sessions — "
+    "pass arc_todo_token on EVERY tenant tool call (same JWT as the "
+    "arc_todo_token secret). set_caller_auth only proves the JWT; it does not "
+    "stick across calls. A secret-card file is not sent as a header."
 )
 
 
@@ -112,16 +111,24 @@ def reset_session_tokens() -> None:
         _session_tokens.clear()
 
 
+def inline_token_from_arguments(arguments: Mapping[str, Any] | None) -> str | None:
+    if not arguments:
+        return None
+    return normalize_caller_token(
+        arguments.get("arc_todo_token")
+    ) or normalize_caller_token(arguments.get("token"))
+
+
 def resolve_caller_token(
     headers: Mapping[str, str] | None,
     *,
     tool_name: str | None = None,
     arguments: Mapping[str, Any] | None = None,
 ) -> str | None:
+    del tool_name
     session_id = get_session_id(headers)
-    inline = None
-    if tool_name == SET_CALLER_AUTH_TOOL and arguments:
-        inline = normalize_caller_token(arguments.get("token"))
-    return inline or extract_token_from_headers(headers) or get_session_token(
-        session_id
+    return (
+        inline_token_from_arguments(arguments)
+        or extract_token_from_headers(headers)
+        or get_session_token(session_id)
     )

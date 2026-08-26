@@ -51,6 +51,13 @@ def test_resolve_prefers_set_caller_auth_argument() -> None:
     assert token == "inline-jwt"
 
 
+def test_empty_input_schema_includes_arc_todo_token() -> None:
+    from app.tool_registry import EmptyInput
+
+    schema = EmptyInput.model_json_schema()
+    assert "arc_todo_token" in schema["properties"]
+
+
 def test_resolve_falls_back_to_session_when_headers_empty() -> None:
     remember_session_token("sess-9", "sticky-jwt")
     token = resolve_caller_token(
@@ -61,14 +68,23 @@ def test_resolve_falls_back_to_session_when_headers_empty() -> None:
     assert token == "sticky-jwt"
 
 
-def test_require_caller_token_mentions_set_caller_auth() -> None:
+def test_resolve_arc_todo_token_on_any_tool() -> None:
+    token = resolve_caller_token(
+        {},
+        tool_name="list_organizations",
+        arguments={"arc_todo_token": "per-call-jwt"},
+    )
+    assert token == "per-call-jwt"
+
+
+def test_require_caller_token_mentions_per_call_argument() -> None:
     from app.caller_auth import caller_token_scope
 
     with caller_token_scope(None):
         try:
             require_caller_token()
         except ValueError as exc:
-            assert "set_caller_auth" in str(exc)
+            assert "arc_todo_token" in str(exc)
             assert str(exc).startswith("Missing Authorization bearer token")
             assert exc.args[0] == MISSING_CALLER_TOKEN_MESSAGE
         else:
