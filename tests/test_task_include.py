@@ -14,6 +14,8 @@ FAT_TASK = {
     "bugReason": "stuck",
     "qaChecklistState": {"checkedItemIds": []},
     "assignee": {"id": "u1", "username": "admin"},
+    "project": {"id": "p1", "name": "Nested Project"},
+    "organization": {"id": "o1", "slug": "nested-org"},
     "subtasks": [
         {
             "id": "c1",
@@ -53,6 +55,8 @@ def test_summary_drops_all_description_bodies():
     assert "planCodeDescription" not in projected
     assert projected["title"] == "Fix login"
     assert projected["isBug"] is True
+    assert "project" not in projected
+    assert "organization" not in projected
 
 
 def test_qa_keeps_test_and_bug_fields():

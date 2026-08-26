@@ -30,8 +30,6 @@ SUMMARY_KEYS = (
     "projectId",
     "organizationId",
     "subtaskProgress",
-    "project",
-    "organization",
 )
 
 PLAN_KEYS = SUMMARY_KEYS + ("businessDescription", "planCodeDescription")
@@ -97,12 +95,26 @@ def project_task(task: dict[str, Any], include: str) -> dict[str, Any]:
     return projected
 
 
-def project_payload(data: Any, include: str) -> Any:
+def project_payload(
+    data: Any,
+    include: str,
+    *,
+    omit_nested_scope: bool = False,
+) -> Any:
     if isinstance(data, list):
         return [
-            project_task(item, include) if isinstance(item, dict) else item
+            _maybe_omit_scope(
+                project_task(item, include) if isinstance(item, dict) else item,
+                omit_nested_scope,
+            )
             for item in data
         ]
     if isinstance(data, dict):
-        return project_task(data, include)
+        return _maybe_omit_scope(project_task(data, include), omit_nested_scope)
     return data
+
+
+def _maybe_omit_scope(item: Any, omit: bool) -> Any:
+    if omit and isinstance(item, dict):
+        return {key: value for key, value in item.items() if key not in ("project", "organization")}
+    return item

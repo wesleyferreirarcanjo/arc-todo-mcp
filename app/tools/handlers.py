@@ -6,6 +6,7 @@ from typing import Any
 from mcp.types import ImageContent, TextContent
 
 from app.arc_todo_client import arc_todo_client
+from app.board_scope import remember_board, resolve_board_scope
 from app.caller_auth import require_caller_token
 from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
@@ -353,29 +354,49 @@ def _task_body(input: CreateTaskInput | UpdateTaskInput) -> dict:
     group="tasks",
     display_name="List tasks",
     description=(
-        "List tasks with optional filters including parent_task_id. "
-        "Default include=summary (no description bodies). Use include=plan to fetch plans."
+        "List tasks with optional filters. Default include=summary. "
+        "Rows omit nested project/organization objects. "
+        "Pass q, limit, and parents_only for duplicate checks. "
+        "organization_id/project_id UUIDs are optional: use project=ski (acronym) "
+        "or a friendly task id on another call in this session."
     ),
     sort_order=20,
     input_model=ListTasksInput,
 )
 async def list_tasks(input: ListTasksInput) -> str:
-    params = {
-        k: v
-        for k, v in {
-            "organizationId": input.organization_id,
-            "projectId": input.project_id,
-            "status": input.status,
-            "criticity": input.criticity,
-            "parentTaskId": input.parent_task_id,
-            "category": input.category,
-            "isBug": "true" if input.is_bug else None,
-        }.items()
-        if v is not None
-    }
+    org_id, project_id = await resolve_board_scope(
+        arc_todo_client,
+        organization_id=input.organization_id,
+        project_id=input.project_id,
+        project=input.project,
+        use_last=True,
+        required=False,
+    )
+    parent_task_id = input.parent_task_id
+    if parent_task_id and not is_uuid(parent_task_id):
+        parent = await resolve_task_scope(arc_todo_client, parent_task_id)
+        parent_task_id = parent["task_id"]
+        if not org_id:
+            org_id = parent.get("organization_id")
+        if not project_id:
+            project_id = parent.get("project_id")
+    params = _list_filter_params(
+        organization_id=org_id,
+        project_id=project_id,
+        status=input.status,
+        criticity=input.criticity,
+        parent_task_id=parent_task_id,
+        category=input.category,
+        is_bug=input.is_bug,
+        q=input.q,
+        limit=input.limit,
+        parents_only=input.parents_only,
+    )
     data = await arc_todo_client.request("GET", "/tasks", params=params)
     include = normalize_include(input.include, "summary")
-    return arc_todo_client.format_result(project_payload(data, include))
+    return arc_todo_client.format_result(
+        project_payload(data, include, omit_nested_scope=True)
+    )
 
 
 @register_tool(
@@ -383,18 +404,38 @@ async def list_tasks(input: ListTasksInput) -> str:
     group="tasks",
     display_name="List project tasks",
     description=(
-        "List tasks within a specific project. Default include=summary (no description bodies)."
+        "List tasks in one project. Leaner than list_tasks (no nested org/project). "
+        "Pass project=ski (acronym) or slug; UUIDs optional. "
+        "status, q, limit, and parents_only filter the board so duplicate checks "
+        "do not pull every status."
     ),
     sort_order=21,
     input_model=ListProjectTasksInput,
 )
 async def list_project_tasks(input: ListProjectTasksInput) -> str:
+    org_id, project_id = await resolve_board_scope(
+        arc_todo_client,
+        organization_id=input.organization_id,
+        project_id=input.project_id,
+        project=input.project,
+        use_last=True,
+        required=True,
+    )
+    params = _list_filter_params(
+        status=input.status,
+        q=input.q,
+        limit=input.limit,
+        parents_only=input.parents_only,
+    )
     data = await arc_todo_client.request(
         "GET",
-        f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks",
+        f"/organizations/{org_id}/projects/{project_id}/tasks",
+        params=params,
     )
     include = normalize_include(input.include, "summary")
-    return arc_todo_client.format_result(project_payload(data, include))
+    return arc_todo_client.format_result(
+        project_payload(data, include, omit_nested_scope=True)
+    )
 
 
 @register_tool(
@@ -423,18 +464,27 @@ async def get_task(input: GetTaskInput) -> str:
     key="create_task",
     group="tasks",
     display_name="Create task",
-    description="Create a task in a project. Optional parent_task_id creates a direct subtask.",
+    description="Create a task in a project. Pass project=ski (acronym) or skill (slug) instead of UUIDs. Optional parent_task_id creates a direct subtask.",
     sort_order=23,
     input_model=CreateTaskInput,
 )
 async def create_task(input: CreateTaskInput) -> str:
+    org_id, project_id = await resolve_board_scope(
+        arc_todo_client,
+        organization_id=input.organization_id,
+        project_id=input.project_id,
+        project=input.project,
+        parent_task_id=input.parent_task_id,
+        use_last=False,
+        required=True,
+    )
     body = _task_body(input)
     if input.parent_task_id and not is_uuid(input.parent_task_id):
         parent = await resolve_task_scope(arc_todo_client, input.parent_task_id)
         body["parentTaskId"] = parent["task_id"]
     data = await arc_todo_client.request(
         "POST",
-        f"/organizations/{input.organization_id}/projects/{input.project_id}/tasks",
+        f"/organizations/{org_id}/projects/{project_id}/tasks",
         json_body=body,
     )
     include = normalize_include(input.include, "summary")
@@ -490,7 +540,45 @@ async def _resolve_task_path(input: OptionalTaskScopeInput) -> tuple[str, str, s
             "organization_id and project_id are required when task_id is a UUID. "
             "For friendly IDs like #arc-1 they can be omitted."
         )
+    remember_board(org_id, project_id)
     return org_id, project_id, resolved["task_id"]
+
+
+def _list_filter_params(
+    *,
+    organization_id: str | None = None,
+    project_id: str | None = None,
+    status: str | None = None,
+    criticity: str | None = None,
+    parent_task_id: str | None = None,
+    category: str | None = None,
+    is_bug: bool | None = None,
+    q: str | None = None,
+    limit: int | None = None,
+    parents_only: bool | None = None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if organization_id:
+        params["organizationId"] = organization_id
+    if project_id:
+        params["projectId"] = project_id
+    if status:
+        params["status"] = status
+    if criticity:
+        params["criticity"] = criticity
+    if parent_task_id:
+        params["parentTaskId"] = parent_task_id
+    if category:
+        params["category"] = category
+    if is_bug is not None:
+        params["isBug"] = "true" if is_bug else "false"
+    if q:
+        params["q"] = q
+    if limit is not None:
+        params["limit"] = limit
+    if parents_only is not None:
+        params["parentsOnly"] = "true" if parents_only else "false"
+    return params
 
 
 @register_tool(

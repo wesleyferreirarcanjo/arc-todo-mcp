@@ -497,6 +497,16 @@ FAT_TASK = {
     "qaChecklistState": {"checkedItemIds": ["item-1"]},
     "assignee": {"id": "u1", "username": "admin"},
     "createdById": "u1",
+    "project": {
+        "id": "d576e04d-f683-4b88-a374-0aab28a4be10",
+        "name": "Arc Todo",
+        "acronym": "arc",
+    },
+    "organization": {
+        "id": "57df4a79-d87d-40e1-9fb0-2da29d8ebecf",
+        "name": "Cursor",
+        "slug": "cursor",
+    },
     "subtasks": [
         {
             "id": "33333333-3333-3333-3333-333333333333",
@@ -586,6 +596,8 @@ async def test_list_tasks_default_summary_omits_descriptions(api_client):
     assert "Abrir /login" not in result
     assert "Fix login freeze" in result
     assert '"isBug":true' in result
+    assert '"name":"Arc Todo"' not in result
+    assert '"slug":"cursor"' not in result
 
 
 @pytest.mark.asyncio
@@ -611,4 +623,118 @@ async def test_get_task_uuid_without_scope_raises(api_client):
         await get_task(
             GetTaskInput(task_id="22222222-2222-2222-2222-222222222222")
         )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_tasks_passes_q_limit_and_parents_only(api_client):
+    route = respx.get("http://api.test/tasks").mock(
+        return_value=Response(200, json=[])
+    )
+
+    await list_tasks(
+        ListTasksInput(q="login freeze", limit=5, parents_only=True, status="todo")
+    )
+
+    params = route.calls[0].request.url.params
+    assert params["q"] == "login freeze"
+    assert params["limit"] == "5"
+    assert params["parentsOnly"] == "true"
+    assert params["status"] == "todo"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_project_tasks_passes_status_and_parents_only(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks"
+    ).mock(return_value=Response(200, json=[]))
+
+    await list_project_tasks(
+        ListProjectTasksInput(
+            organization_id=org_id,
+            project_id=project_id,
+            status="todo",
+            parents_only=True,
+            q="MCP token",
+        )
+    )
+
+    params = route.calls[0].request.url.params
+    assert params["status"] == "todo"
+    assert params["parentsOnly"] == "true"
+    assert params["q"] == "MCP token"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_create_task_resolves_project_acronym(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    resolve_route = respx.get("http://api.test/scope/resolve").mock(
+        return_value=Response(
+            200,
+            json={
+                "status": "resolved",
+                "organization": {"id": org_id, "name": "Cursor", "slug": "cursor"},
+                "project": {
+                    "id": project_id,
+                    "name": "Arc Todo Skills",
+                    "organizationId": org_id,
+                },
+            },
+        )
+    )
+    create_route = respx.post(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks"
+    ).mock(
+        return_value=Response(
+            201,
+            json={"id": "22222222-2222-2222-2222-222222222222", "title": "New task"},
+        )
+    )
+
+    await create_task(CreateTaskInput(project="ski", title="New task"))
+
+    assert resolve_route.called
+    assert resolve_route.calls[0].request.url.params["projectHint"] == "ski"
+    assert create_route.called
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_project_tasks_resolves_slug_and_defaults_after_get_task(
+    api_client,
+):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = FAT_TASK["id"]
+    respx.get("http://api.test/tasks/resolve").mock(
+        return_value=Response(
+            200,
+            json={
+                "id": task_id,
+                "displayId": "#ski-52",
+                "taskNumber": 52,
+                "organizationId": org_id,
+                "projectId": project_id,
+                "title": FAT_TASK["title"],
+            },
+        )
+    )
+    respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+    ).mock(return_value=Response(200, json=FAT_TASK))
+    list_route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks"
+    ).mock(return_value=Response(200, json=[]))
+
+    await get_task(GetTaskInput(task_id="#ski-52"))
+    await list_project_tasks(ListProjectTasksInput(status="todo"))
+
+    assert list_route.called
+    assert list_route.calls[0].request.url.params["status"] == "todo"
+
 

@@ -139,8 +139,18 @@ class GetPersonInput(BaseModel):
 
 
 class ListTasksInput(BaseModel):
-    organization_id: str | None = None
-    project_id: str | None = None
+    organization_id: str | None = Field(
+        default=None,
+        description="Organization UUID or slug. Omit to use the last board from this MCP session.",
+    )
+    project_id: str | None = Field(
+        default=None,
+        description="Project UUID, acronym (ski), slug, or name. Omit to use the last board.",
+    )
+    project: str | None = Field(
+        default=None,
+        description="Project acronym, slug, or name (e.g. ski, skill, cursor).",
+    )
     status: str | None = Field(
         default=None,
         description="todo | in_progress | dev_test | qa_test | done",
@@ -151,7 +161,7 @@ class ListTasksInput(BaseModel):
     )
     parent_task_id: str | None = Field(
         default=None,
-        description="Filter by parent task UUID",
+        description="Filter by parent task UUID or friendly ID",
     )
     category: str | None = Field(
         default=None,
@@ -161,12 +171,27 @@ class ListTasksInput(BaseModel):
         default=None,
         description="Filter tasks flagged as bugs",
     )
+    q: str | None = Field(
+        default=None,
+        description="Case-insensitive title substring. Use this for duplicate checks instead of listing the whole board.",
+    )
+    limit: int | None = Field(
+        default=None,
+        ge=1,
+        le=200,
+        description="Max rows to return (1-200).",
+    )
+    parents_only: bool | None = Field(
+        default=None,
+        description="If true, return only parent tasks (parentTaskId is null).",
+    )
     include: str = Field(
         default="summary",
         description=(
             "summary | plan | qa | full. Default summary. "
             "summary=ids/flags/subtask stubs; plan=+business+planCode; "
-            "qa=+testDescription+checklist+bug fields; full=all except duplicate description."
+            "qa=+testDescription+checklist+bug fields; full=all except duplicate description. "
+            "List rows never nest project/organization objects."
         ),
     )
 
@@ -176,7 +201,37 @@ class ProjectTaskScopeInput(BaseModel):
     project_id: str
 
 
-class ListProjectTasksInput(ProjectTaskScopeInput):
+class ListProjectTasksInput(BaseModel):
+    organization_id: str | None = Field(
+        default=None,
+        description="Organization UUID or slug. Optional when project is an acronym/slug or after get_task in this session.",
+    )
+    project_id: str | None = Field(
+        default=None,
+        description="Project UUID, acronym, slug, or name.",
+    )
+    project: str | None = Field(
+        default=None,
+        description="Project acronym, slug, or name (e.g. ski, skill, cursor).",
+    )
+    status: str | None = Field(
+        default=None,
+        description="todo | in_progress | dev_test | qa_test | done. Omit to include every status.",
+    )
+    q: str | None = Field(
+        default=None,
+        description="Case-insensitive title substring for duplicate checks.",
+    )
+    limit: int | None = Field(
+        default=None,
+        ge=1,
+        le=200,
+        description="Max rows to return (1-200).",
+    )
+    parents_only: bool | None = Field(
+        default=None,
+        description="If true, return only parent tasks (parentTaskId is null).",
+    )
     include: str = Field(
         default="summary",
         description=(
@@ -226,7 +281,19 @@ class DownloadTaskEvidenceInput(OptionalTaskScopeInput):
     evidence_id: str = Field(description="Task evidence (image/video) UUID")
 
 
-class CreateTaskInput(ProjectTaskScopeInput):
+class CreateTaskInput(BaseModel):
+    organization_id: str | None = Field(
+        default=None,
+        description="Organization UUID or slug. Optional when project is an acronym/slug.",
+    )
+    project_id: str | None = Field(
+        default=None,
+        description="Project UUID. Prefer `project` with an acronym or slug.",
+    )
+    project: str | None = Field(
+        default=None,
+        description="Project acronym, slug, or name (e.g. ski, skill, cursor). Preferred over UUIDs.",
+    )
     title: str
     description: str | None = None
     business_description: str | None = Field(
