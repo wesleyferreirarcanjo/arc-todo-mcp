@@ -281,6 +281,12 @@ class DownloadTaskEvidenceInput(OptionalTaskScopeInput):
     evidence_id: str = Field(description="Task evidence (image/video) UUID")
 
 
+class MoveTaskInput(OptionalTaskScopeInput):
+    status: str = Field(
+        description="todo | in_progress | dev_test | qa_test | done",
+    )
+
+
 class CreateTaskInput(BaseModel):
     organization_id: str | None = Field(
         default=None,
@@ -344,10 +350,10 @@ class CreateTaskInput(BaseModel):
         ),
     )
     include: str = Field(
-        default="summary",
+        default="ack",
         description=(
-            "Response shape: summary | plan | qa | full. Default summary "
-            "(the agent already sent the text)."
+            "Response shape: ack | summary | plan | qa | full. Default ack "
+            "(id/title/status only)."
         ),
     )
 
@@ -403,10 +409,10 @@ class UpdateTaskInput(OptionalTaskScopeInput):
         ),
     )
     include: str = Field(
-        default="summary",
+        default="ack",
         description=(
-            "Response shape: summary | plan | qa | full. Default summary "
-            "(the agent already sent the text)."
+            "Response shape: ack | summary | plan | qa | full. Default ack "
+            "(id/title/status only). Do not use this tool to only change status — use move_task."
         ),
     )
 

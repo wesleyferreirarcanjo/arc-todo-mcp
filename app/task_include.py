@@ -2,18 +2,35 @@ from __future__ import annotations
 
 from typing import Any
 
+INCLUDE_ACK = "ack"
 INCLUDE_SUMMARY = "summary"
 INCLUDE_PLAN = "plan"
 INCLUDE_QA = "qa"
 INCLUDE_FULL = "full"
-VALID_INCLUDES = (INCLUDE_SUMMARY, INCLUDE_PLAN, INCLUDE_QA, INCLUDE_FULL)
+VALID_INCLUDES = (
+    INCLUDE_ACK,
+    INCLUDE_SUMMARY,
+    INCLUDE_PLAN,
+    INCLUDE_QA,
+    INCLUDE_FULL,
+)
 
 INCLUDE_FIELD_DESCRIPTION = (
-    "summary | plan | qa | full. "
+    "ack | summary | plan | qa | full. "
+    "ack=id/title/status only (default for create/update/move); "
     "summary=ids/flags/subtask stubs; "
     "plan=+business+planCode; "
     "qa=+testDescription+checklist+bug fields; "
     "full=all fields except duplicate description alias."
+)
+
+ACK_KEYS = (
+    "id",
+    "displayId",
+    "title",
+    "status",
+    "isBug",
+    "parentTaskId",
 )
 
 SUMMARY_KEYS = (
@@ -86,6 +103,8 @@ def project_task(task: dict[str, Any], include: str) -> dict[str, Any]:
         projected = _pick(task, PLAN_KEYS)
     elif include == INCLUDE_QA:
         projected = _pick(task, QA_KEYS)
+    elif include == INCLUDE_ACK:
+        return _pick(task, ACK_KEYS)
     else:
         projected = _pick(task, SUMMARY_KEYS)
 

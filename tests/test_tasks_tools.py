@@ -15,6 +15,7 @@ from app.tools.handlers import (
     list_task_evidence,
     list_task_history,
     list_tasks,
+    move_task,
     update_task,
     add_task_comment,
 )
@@ -26,6 +27,7 @@ from app.tool_registry import (
     GetTaskInput,
     ListProjectTasksInput,
     ListTasksInput,
+    MoveTaskInput,
     UpdateTaskInput,
 )
 
@@ -736,5 +738,63 @@ async def test_list_project_tasks_resolves_slug_and_defaults_after_get_task(
 
     assert list_route.called
     assert list_route.calls[0].request.url.params["status"] == "todo"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_move_task_patches_status_and_returns_ack(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = FAT_TASK["id"]
+    respx.get("http://api.test/tasks/resolve").mock(
+        return_value=Response(
+            200,
+            json={
+                "id": task_id,
+                "displayId": "#arc-1",
+                "organizationId": org_id,
+                "projectId": project_id,
+            },
+        )
+    )
+    route = respx.patch(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+    ).mock(return_value=Response(200, json=FAT_TASK))
+
+    result = await move_task(MoveTaskInput(task_id="#arc-1", status="dev_test"))
+
+    assert route.called
+    body = route.calls[0].request.content.decode()
+    assert '"status"' in body
+    assert "dev_test" in body
+    assert "Patch LoginPage.tsx" not in result
+    assert "subtasks" not in result
+    assert "Fix login freeze" in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_update_task_default_ack_omits_plan_and_subtasks(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = FAT_TASK["id"]
+    respx.patch(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+    ).mock(return_value=Response(200, json=FAT_TASK))
+
+    result = await update_task(
+        UpdateTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            title="Fix login freeze",
+        )
+    )
+
+    assert "Patch LoginPage.tsx" not in result
+    assert "Users cannot sign in" not in result
+    assert "subtasks" not in result
+    assert "Fix login freeze" in result
+
 
 

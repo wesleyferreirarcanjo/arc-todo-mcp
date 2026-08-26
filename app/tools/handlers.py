@@ -6,7 +6,7 @@ from typing import Any
 from mcp.types import ImageContent, TextContent
 
 from app.arc_todo_client import arc_todo_client
-from app.board_scope import remember_board, resolve_board_scope
+from app.board_scope import last_board, remember_board, resolve_board_scope
 from app.caller_auth import require_caller_token
 from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
@@ -48,6 +48,7 @@ from app.tool_registry import (
     ListProjectTasksInput,
     ListProjectsInput,
     ListTasksInput,
+    MoveTaskInput,
     OptionalTaskScopeInput,
     RetrieveKnowledgeInput,
     UpdateKnowledgeInput,
@@ -487,16 +488,46 @@ async def create_task(input: CreateTaskInput) -> str:
         f"/organizations/{org_id}/projects/{project_id}/tasks",
         json_body=body,
     )
-    include = normalize_include(input.include, "summary")
-    return arc_todo_client.format_result(project_payload(data, include))
+    include = normalize_include(input.include, "ack")
+    return arc_todo_client.format_result(
+        project_payload(data, include, omit_nested_scope=True)
+    )
+
+
+@register_tool(
+    key="move_task",
+    group="tasks",
+    display_name="Move task",
+    description=(
+        "Change only a task's board status. Prefer this over update_task for column moves. "
+        "Friendly IDs like #arc-1 do not need organization_id/project_id. "
+        "Response is a short ack (id/title/status)."
+    ),
+    sort_order=24,
+    input_model=MoveTaskInput,
+)
+async def move_task(input: MoveTaskInput) -> str:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    data = await arc_todo_client.request(
+        "PATCH",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
+        json_body={"status": input.status},
+    )
+    return arc_todo_client.format_result(
+        project_payload(data, "ack", omit_nested_scope=True)
+    )
 
 
 @register_tool(
     key="update_task",
     group="tasks",
     display_name="Update task",
-    description="Update a task in a project. Set parent_task_id to attach as subtask or null to detach. Setting is_bug=true reports an open bug (requires bug_reason) and moves it to todo; is_bug=false marks the bug solved.",
-    sort_order=24,
+    description=(
+        "Update task fields (title, descriptions, bug flag, checklist). "
+        "Do not use this only to change status — use move_task. "
+        "Default response is ack (id/title/status), not the full card."
+    ),
+    sort_order=25,
     input_model=UpdateTaskInput,
 )
 async def update_task(input: UpdateTaskInput) -> str:
@@ -510,8 +541,10 @@ async def update_task(input: UpdateTaskInput) -> str:
         f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}",
         json_body=body,
     )
-    include = normalize_include(input.include, "summary")
-    return arc_todo_client.format_result(project_payload(data, include))
+    include = normalize_include(input.include, "ack")
+    return arc_todo_client.format_result(
+        project_payload(data, include, omit_nested_scope=True)
+    )
 
 
 @register_tool(
@@ -535,6 +568,11 @@ async def _resolve_task_path(input: OptionalTaskScopeInput) -> tuple[str, str, s
     resolved = await resolve_task_scope(arc_todo_client, input.task_id)
     org_id = resolved.get("organization_id") or input.organization_id
     project_id = resolved.get("project_id") or input.project_id
+    if not org_id or not project_id:
+        remembered = last_board()
+        if remembered:
+            org_id = org_id or remembered[0]
+            project_id = project_id or remembered[1]
     if not org_id or not project_id:
         raise ValueError(
             "organization_id and project_id are required when task_id is a UUID. "

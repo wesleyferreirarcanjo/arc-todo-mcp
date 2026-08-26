@@ -59,6 +59,19 @@ def test_summary_drops_all_description_bodies():
     assert "organization" not in projected
 
 
+def test_ack_is_id_title_status_without_subtasks_or_bodies():
+    projected = project_payload(FAT_TASK, "ack")
+    assert projected == {
+        "id": "t1",
+        "displayId": "#arc-1",
+        "title": "Fix login",
+        "status": "todo",
+        "isBug": True,
+    }
+    assert "subtasks" not in projected
+    assert "planCodeDescription" not in projected
+
+
 def test_qa_keeps_test_and_bug_fields():
     projected = project_payload(FAT_TASK, "qa")
     assert projected["testDescription"] == "qa essay"
