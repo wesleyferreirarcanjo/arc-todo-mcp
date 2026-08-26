@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from app.caller_auth import get_caller_token
+from app.caller_auth import MISSING_CALLER_TOKEN_MESSAGE, get_caller_token
 from app.config import settings
 
 
@@ -54,8 +54,7 @@ class ArcTodoClient:
         if allow_service_account and self._token:
             return {"Authorization": f"Bearer {self._token}"}
         raise ArcTodoApiError(
-            "Missing Authorization bearer token. "
-            "Set headers.Authorization to Bearer <your Arc Todo JWT> in mcp.json.",
+            MISSING_CALLER_TOKEN_MESSAGE,
             401,
         )
 

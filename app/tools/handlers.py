@@ -7,7 +7,7 @@ from mcp.types import ImageContent, TextContent
 
 from app.arc_todo_client import arc_todo_client
 from app.board_scope import last_board, remember_board, resolve_board_scope
-from app.caller_auth import require_caller_token
+from app.caller_auth import normalize_caller_token, require_caller_token
 from app.rag_client import RagClientError, rag_client
 from app.task_id_resolver import is_uuid, resolve_task_scope
 from app.task_include import normalize_include, project_payload
@@ -51,6 +51,7 @@ from app.tool_registry import (
     MoveTaskInput,
     OptionalTaskScopeInput,
     RetrieveKnowledgeInput,
+    SetCallerAuthInput,
     UpdateKnowledgeInput,
     UpdateProjectDiagramInput,
     UpdateProjectWireframeInput,
@@ -93,6 +94,32 @@ def set_enabled_keys(keys: set[str]) -> None:
 )
 async def list_enabled_mcp_tools(_: EmptyInput) -> str:
     return arc_todo_client.format_result(sorted(_enabled_keys))
+
+
+@register_tool(
+    key="set_caller_auth",
+    group="system",
+    display_name="Set caller auth",
+    description=(
+        "Bind an Arc Todo JWT to this MCP session. Use when tenant tools return "
+        "Missing Authorization bearer token (Grok/cloud HTTP connectors drop "
+        "headers.Authorization). Pass the JWT from the arc_todo_token secret. "
+        "Then retry list_organizations on the same connection."
+    ),
+    sort_order=3,
+    input_model=SetCallerAuthInput,
+)
+async def set_caller_auth(input: SetCallerAuthInput) -> str:
+    if not normalize_caller_token(input.token):
+        raise ValueError("token is blank")
+    data = await arc_todo_client.request("GET", "/auth/me")
+    return arc_todo_client.format_result(
+        {
+            "ok": True,
+            "id": data.get("id") if isinstance(data, dict) else None,
+            "username": data.get("username") if isinstance(data, dict) else None,
+        }
+    )
 
 
 @register_tool(

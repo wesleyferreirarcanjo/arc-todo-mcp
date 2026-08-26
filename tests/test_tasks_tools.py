@@ -16,6 +16,7 @@ from app.tools.handlers import (
     list_task_history,
     list_tasks,
     move_task,
+    set_caller_auth,
     update_task,
     add_task_comment,
 )
@@ -28,6 +29,7 @@ from app.tool_registry import (
     ListProjectTasksInput,
     ListTasksInput,
     MoveTaskInput,
+    SetCallerAuthInput,
     UpdateTaskInput,
 )
 
@@ -45,6 +47,24 @@ async def test_build_mcp_server_registers_only_enabled_tools():
     assert "check_arc_todo_api_health" in tool_names
     assert "list_tasks" in tool_names
     assert "create_task" not in tool_names
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_set_caller_auth_checks_me(api_client):
+    route = respx.get("http://api.test/auth/me").mock(
+        return_value=Response(
+            200, json={"id": "user-1", "username": "admin", "isAdmin": True}
+        )
+    )
+
+    result = await set_caller_auth(SetCallerAuthInput(token="token-abc"))
+
+    assert route.called
+    assert route.calls[0].request.headers["authorization"] == "Bearer token-abc"
+    assert '"ok":true' in result
+    assert '"username":"admin"' in result
+    assert "token-abc" not in result
 
 
 @pytest.fixture

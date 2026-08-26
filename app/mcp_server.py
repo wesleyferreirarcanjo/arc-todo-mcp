@@ -10,7 +10,12 @@ from starlette.applications import Starlette
 from starlette.routing import Mount
 from pydantic import BaseModel
 
-from app.caller_auth import caller_token_scope, extract_bearer_from_authorization
+from app.caller_auth import (
+    caller_token_scope,
+    get_session_id,
+    remember_session_token,
+    resolve_caller_token,
+)
 from app.tool_registry import MCP_TOOL_REGISTRY, ToolDefinition
 
 # Import handlers so @register_tool decorators populate MCP_TOOL_REGISTRY.
@@ -27,15 +32,27 @@ def _json_schema(model: type[BaseModel] | None) -> dict[str, Any]:
     return schema
 
 
-def _caller_token_from_request(server: Server) -> str | None:
+def _request_headers(server: Server) -> dict[str, str] | None:
     try:
         request = server.request_context.request
     except LookupError:
         return None
     if request is None:
         return None
-    authorization = request.headers.get("authorization")
-    return extract_bearer_from_authorization(authorization)
+    return request.headers
+
+
+def _caller_token_from_request(
+    server: Server,
+    *,
+    tool_name: str | None = None,
+    arguments: dict[str, Any] | None = None,
+) -> str | None:
+    return resolve_caller_token(
+        _request_headers(server),
+        tool_name=tool_name,
+        arguments=arguments,
+    )
 
 
 def _as_tool_content(result: Any) -> list[ToolContent]:
@@ -74,12 +91,17 @@ def build_mcp_server(enabled_keys: set[str]) -> tuple[Server, StreamableHTTPSess
         if tool is None:
             raise ValueError(f"Tool '{name}' is not enabled")
 
-        with caller_token_scope(_caller_token_from_request(server)):
+        arguments = dict(arguments or {})
+        token = _caller_token_from_request(
+            server, tool_name=name, arguments=arguments
+        )
+        with caller_token_scope(token):
             if tool.input_model is None:
                 result = await tool.handler(None)
             else:
                 validated = tool.input_model.model_validate(arguments)
                 result = await tool.handler(validated)
+        remember_session_token(get_session_id(_request_headers(server)), token)
 
         return _as_tool_content(result)
 

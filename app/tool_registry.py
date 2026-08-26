@@ -66,6 +66,17 @@ class EmptyInput(BaseModel):
     pass
 
 
+class SetCallerAuthInput(BaseModel):
+    token: str = Field(
+        description=(
+            "Arc Todo JWT from the web app (localStorage arc_todo_token) or the "
+            "arc_todo_token secret. Bearer prefix optional. Binds to this MCP "
+            "session so later tenant tools work when the HTTP connector drops "
+            "the Authorization header."
+        )
+    )
+
+
 class OrganizationIdInput(BaseModel):
     organization_id: str = Field(description="Organization UUID")
 
