@@ -301,6 +301,33 @@ class AddTaskCommentInput(OptionalTaskScopeInput):
     body: str = Field(description="Comment text to post on the task")
 
 
+class GetTaskBugFlagInput(OptionalTaskScopeInput):
+    pass
+
+
+class CreateTaskBugFlagInput(OptionalTaskScopeInput):
+    primary: str = Field(
+        description="REAL_DEFECT | INSUFFICIENT_EVIDENCE",
+    )
+    secondary: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional tags: regression, not_deployed, missing_evidence, "
+            "missing_repro. Repeat tags are stored once."
+        ),
+    )
+    motivo: str = Field(
+        description="Why this classification. Required. Not shown to members.",
+    )
+    evidence: str | None = Field(
+        default=None,
+        description=(
+            "What evidence was reviewed (filenames, timestamps, checklist). "
+            "Use a short note like 'sem evidência' when none exists."
+        ),
+    )
+
+
 class DownloadTaskEvidenceInput(OptionalTaskScopeInput):
     evidence_id: str = Field(description="Task evidence (image/video) UUID")
 

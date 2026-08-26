@@ -19,13 +19,17 @@ from app.tools.handlers import (
     set_caller_auth,
     update_task,
     add_task_comment,
+    create_task_bug_flag,
+    get_task_bug_flag,
 )
 from app.tool_registry import (
     AddTaskCommentInput,
+    CreateTaskBugFlagInput,
     CreateTaskInput,
     DownloadTaskEvidenceInput,
     GetProjectInput,
     GetTaskInput,
+    GetTaskBugFlagInput,
     ListProjectTasksInput,
     ListTasksInput,
     MoveTaskInput,
@@ -375,6 +379,70 @@ async def test_add_task_comment_posts_body(api_client):
         '"body":"Fixed icon padding"' in route.calls[0].request.content.decode()
     )
     assert "Fixed icon padding" in result
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_task_bug_flag_returns_null_when_missing(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.get(f"http://api.test/analytics/bug-flags/task/{task_id}").mock(
+        return_value=Response(200, json={"flag": None})
+    )
+
+    result = await get_task_bug_flag(
+        GetTaskBugFlagInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+        )
+    )
+
+    assert route.called
+    assert '"flag":null' in result.replace(" ", "")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_create_task_bug_flag_posts_dossier(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.post("http://api.test/analytics/bug-flags").mock(
+        return_value=Response(
+            201,
+            json={
+                "id": "flag-1",
+                "taskId": task_id,
+                "displayId": "#arc-296",
+                "title": "Corrigir Navigate",
+                "primary": "REAL_DEFECT",
+                "secondary": ["regression", "not_deployed"],
+                "motivo": "URL goes to /knowledge",
+                "evidence": "image.png",
+            },
+        )
+    )
+
+    result = await create_task_bug_flag(
+        CreateTaskBugFlagInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            primary="REAL_DEFECT",
+            secondary=["regression", "not_deployed"],
+            motivo="URL goes to /knowledge",
+            evidence="image.png",
+        )
+    )
+
+    body = route.calls[0].request.content.decode()
+    assert route.called
+    assert '"taskId":"22222222-2222-2222-2222-222222222222"' in body.replace(" ", "")
+    assert "REAL_DEFECT" in body
+    assert "not_deployed" in body
+    assert "URL goes to /knowledge" in result
 
 
 @pytest.mark.asyncio

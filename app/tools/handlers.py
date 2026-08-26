@@ -14,6 +14,8 @@ from app.task_include import normalize_include, project_payload
 from app.tool_registry import (
     AddOrganizationMemberInput,
     AddTaskCommentInput,
+    CreateTaskBugFlagInput,
+    GetTaskBugFlagInput,
     CreateOrganizationUserInput,
     CreateKnowledgeInput,
     CreateProjectDiagramInput,
@@ -752,6 +754,59 @@ async def list_task_history(input: OptionalTaskScopeInput) -> str:
     data = await arc_todo_client.request(
         "GET",
         f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/history",
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="get_task_bug_flag",
+    group="tasks",
+    display_name="Get task bug flag",
+    description=(
+        "Check whether a Grok bug-flag dossier already exists for this task. "
+        "Returns { flag: null } when none. Admin analytics only; never shown on the board. "
+        "Friendly IDs like #arc-296 work. Pass arc_todo_token on Grok HTTP calls."
+    ),
+    sort_order=31,
+    input_model=GetTaskBugFlagInput,
+)
+async def get_task_bug_flag(input: GetTaskBugFlagInput) -> str:
+    _, _, task_id = await _resolve_task_path(input)
+    data = await arc_todo_client.request(
+        "GET",
+        f"/analytics/bug-flags/task/{task_id}",
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="create_task_bug_flag",
+    group="tasks",
+    display_name="Create task bug flag",
+    description=(
+        "File a Grok bug-report dossier on a task (primary REAL_DEFECT | "
+        "INSUFFICIENT_EVIDENCE; secondary regression, not_deployed, missing_evidence, "
+        "missing_repro; motivo; evidence). Stored for admin Analytics only. "
+        "Friendly IDs like #arc-296. Pass arc_todo_token on Grok HTTP calls."
+    ),
+    sort_order=32,
+    input_model=CreateTaskBugFlagInput,
+)
+async def create_task_bug_flag(input: CreateTaskBugFlagInput) -> str:
+    _, _, task_id = await _resolve_task_path(input)
+    body: dict[str, Any] = {
+        "taskId": task_id,
+        "primary": input.primary,
+        "motivo": input.motivo,
+    }
+    if input.secondary is not None:
+        body["secondary"] = input.secondary
+    if input.evidence is not None:
+        body["evidence"] = input.evidence
+    data = await arc_todo_client.request(
+        "POST",
+        "/analytics/bug-flags",
+        json_body=body,
     )
     return arc_todo_client.format_result(data)
 
