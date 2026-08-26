@@ -421,6 +421,8 @@ async def test_create_task_bug_flag_posts_dossier(api_client):
                 "secondary": ["regression", "not_deployed"],
                 "motivo": "URL goes to /knowledge",
                 "evidence": "image.png",
+                "taskScore": 7,
+                "flagScore": 9,
             },
         )
     )
@@ -434,6 +436,8 @@ async def test_create_task_bug_flag_posts_dossier(api_client):
             secondary=["regression", "not_deployed"],
             motivo="URL goes to /knowledge",
             evidence="image.png",
+            task_score=7,
+            flag_score=9,
         )
     )
 
@@ -442,6 +446,8 @@ async def test_create_task_bug_flag_posts_dossier(api_client):
     assert '"taskId":"22222222-2222-2222-2222-222222222222"' in body.replace(" ", "")
     assert "REAL_DEFECT" in body
     assert "not_deployed" in body
+    assert '"taskScore":7' in body.replace(" ", "")
+    assert '"flagScore":9' in body.replace(" ", "")
     assert "URL goes to /knowledge" in result
 
 

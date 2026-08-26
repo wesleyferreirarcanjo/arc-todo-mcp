@@ -786,7 +786,8 @@ async def get_task_bug_flag(input: GetTaskBugFlagInput) -> str:
     description=(
         "File a Grok bug-report dossier on a task (primary REAL_DEFECT | "
         "INSUFFICIENT_EVIDENCE; secondary regression, not_deployed, missing_evidence, "
-        "missing_repro; motivo; evidence). Stored for admin Analytics only. "
+        "missing_repro; motivo; evidence; task_score 1-10; flag_score 1-10). "
+        "Stored for admin Analytics only. "
         "Friendly IDs like #arc-296. Pass arc_todo_token on Grok HTTP calls."
     ),
     sort_order=32,
@@ -798,6 +799,8 @@ async def create_task_bug_flag(input: CreateTaskBugFlagInput) -> str:
         "taskId": task_id,
         "primary": input.primary,
         "motivo": input.motivo,
+        "taskScore": input.task_score,
+        "flagScore": input.flag_score,
     }
     if input.secondary is not None:
         body["secondary"] = input.secondary

@@ -326,6 +326,16 @@ class CreateTaskBugFlagInput(OptionalTaskScopeInput):
             "Use a short note like 'sem evidência' when none exists."
         ),
     )
+    task_score: int = Field(
+        ge=1,
+        le=10,
+        description="1-10 rating of the task itself (clarity, completeness of the ticket).",
+    )
+    flag_score: int = Field(
+        ge=1,
+        le=10,
+        description="1-10 rating of this bug report (evidence, repro, how well it was filed).",
+    )
 
 
 class DownloadTaskEvidenceInput(OptionalTaskScopeInput):
