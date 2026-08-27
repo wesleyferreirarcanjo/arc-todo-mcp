@@ -9,10 +9,12 @@ from app.tools.handlers import (
     create_task,
     delete_project,
     download_task_evidence,
+    download_task_logs,
     get_task,
     list_project_tasks,
     list_task_comments,
     list_task_evidence,
+    list_task_logs,
     list_task_history,
     list_tasks,
     move_task,
@@ -27,6 +29,7 @@ from app.tool_registry import (
     CreateTaskBugFlagInput,
     CreateTaskInput,
     DownloadTaskEvidenceInput,
+    DownloadTaskLogInput,
     GetProjectInput,
     GetTaskInput,
     GetTaskBugFlagInput,
@@ -490,6 +493,45 @@ async def test_list_task_evidence_calls_evidence_endpoint(api_client):
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_list_task_logs_calls_logs_endpoint(api_client):
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/logs"
+    ).mock(
+        return_value=Response(
+            200,
+            json=[
+                {
+                    "id": "l1",
+                    "taskId": task_id,
+                    "originalFilename": "session-log.json",
+                    "mimeType": "application/json",
+                    "sizeBytes": 88,
+                    "uploadedById": "u1",
+                    "checklistItemId": "item-0",
+                    "createdAt": "2026-08-27T12:00:00.000Z",
+                }
+            ],
+        )
+    )
+
+    result = await list_task_logs(
+        GetTaskInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+        )
+    )
+
+    assert route.called
+    assert "session-log.json" in result
+    assert "item-0" in result
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_list_task_history_calls_history_endpoint(api_client):
     org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
     project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
@@ -575,6 +617,47 @@ async def test_download_task_evidence_returns_image_content(api_client):
     assert "contentBase64" not in result[0].text
     assert isinstance(result[1], ImageContent)
     assert result[1].mimeType == "image/png"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_download_task_logs_returns_json_text(api_client):
+    from mcp.types import TextContent
+
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    log_id = "44444444-4444-4444-4444-444444444444"
+    body = b'{"capture":{"tabTitle":"Shop","events":[{"kind":"console","message":"boom"}]}}'
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+        f"/logs/{log_id}/download"
+    ).mock(
+        return_value=Response(
+            200,
+            content=body,
+            headers={
+                "content-type": "application/json",
+                "content-disposition": 'attachment; filename="session-log.json"',
+            },
+        )
+    )
+
+    result = await download_task_logs(
+        DownloadTaskLogInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            log_id=log_id,
+        )
+    )
+
+    assert route.called
+    assert len(result) == 1
+    assert isinstance(result[0], TextContent)
+    assert "session-log.json" in result[0].text
+    assert "boom" in result[0].text
+    assert "contentBase64" not in result[0].text
 
 
 FAT_TASK = {

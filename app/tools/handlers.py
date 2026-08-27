@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from typing import Any
 
 from mcp.types import ImageContent, TextContent
@@ -25,6 +26,7 @@ from app.tool_registry import (
     DeleteAttachmentInput,
     DownloadAttachmentInput,
     DownloadTaskEvidenceInput,
+    DownloadTaskLogInput,
     EmptyInput,
     GetOrganizationInput,
     GetPersonInput,
@@ -739,6 +741,57 @@ async def download_task_evidence(input: DownloadTaskEvidenceInput) -> list[Any]:
 
 
 @register_tool(
+    key="list_task_logs",
+    group="tasks",
+    display_name="List task logs",
+    description=(
+        "List QA session log JSON files on a task. "
+        "Supports friendly task IDs. Pass arc_todo_token on Grok HTTP calls."
+    ),
+    sort_order=30,
+    input_model=OptionalTaskScopeInput,
+)
+async def list_task_logs(input: OptionalTaskScopeInput) -> str:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    data = await arc_todo_client.request(
+        "GET",
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}/logs",
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="download_task_logs",
+    group="tasks",
+    display_name="Download task logs",
+    description=(
+        "Download one QA session log as JSON text. "
+        "Supports friendly task IDs. Pass arc_todo_token on Grok HTTP calls."
+    ),
+    sort_order=31,
+    input_model=DownloadTaskLogInput,
+)
+async def download_task_logs(input: DownloadTaskLogInput) -> list[Any]:
+    org_id, project_id, task_id = await _resolve_task_path(input)
+    content, mime_type, filename = await arc_todo_client.download(
+        f"/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+        f"/logs/{input.log_id}/download",
+    )
+    mime = (mime_type or "application/json").split(";")[0].strip()
+    meta: dict[str, Any] = {
+        "id": input.log_id,
+        "filename": filename,
+        "mimeType": mime,
+        "sizeBytes": len(content),
+    }
+    try:
+        meta["content"] = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        meta["contentBase64"] = base64.b64encode(content).decode("ascii")
+    return [TextContent(type="text", text=arc_todo_client.format_result(meta))]
+
+
+@register_tool(
     key="list_task_history",
     group="tasks",
     display_name="List task history",
@@ -746,7 +799,7 @@ async def download_task_evidence(input: DownloadTaskEvidenceInput) -> list[Any]:
         "List field-change history for a task (title, description, dueDate, isBug, bugReason). "
         "Use only when is_bug is true or the user asked. Supports friendly task IDs."
     ),
-    sort_order=30,
+    sort_order=32,
     input_model=OptionalTaskScopeInput,
 )
 async def list_task_history(input: OptionalTaskScopeInput) -> str:
@@ -767,7 +820,7 @@ async def list_task_history(input: OptionalTaskScopeInput) -> str:
         "Returns { flag: null } when none. Admin analytics only; never shown on the board. "
         "Friendly IDs like #arc-296 work. Pass arc_todo_token on Grok HTTP calls."
     ),
-    sort_order=31,
+    sort_order=33,
     input_model=GetTaskBugFlagInput,
 )
 async def get_task_bug_flag(input: GetTaskBugFlagInput) -> str:
@@ -790,7 +843,7 @@ async def get_task_bug_flag(input: GetTaskBugFlagInput) -> str:
         "Stored for admin Analytics only. "
         "Friendly IDs like #arc-296. Pass arc_todo_token on Grok HTTP calls."
     ),
-    sort_order=32,
+    sort_order=34,
     input_model=CreateTaskBugFlagInput,
 )
 async def create_task_bug_flag(input: CreateTaskBugFlagInput) -> str:

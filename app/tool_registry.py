@@ -342,6 +342,10 @@ class DownloadTaskEvidenceInput(OptionalTaskScopeInput):
     evidence_id: str = Field(description="Task evidence (image/video) UUID")
 
 
+class DownloadTaskLogInput(OptionalTaskScopeInput):
+    log_id: str = Field(description="Task session log UUID")
+
+
 class MoveTaskInput(OptionalTaskScopeInput):
     status: str = Field(
         description="todo | in_progress | dev_test | qa_test | done",
