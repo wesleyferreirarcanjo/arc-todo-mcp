@@ -692,8 +692,10 @@ async def add_task_comment(input: AddTaskCommentInput) -> str:
     group="tasks",
     display_name="List task evidence",
     description=(
-        "List image/video evidence attachments on a task. "
-        "Use only when is_bug is true or the user asked. Supports friendly task IDs."
+        "List image/video evidence attachments on a task (screenshots/clips). "
+        "Console and failed HTTP from bug capture are session logs — use "
+        "list_task_logs / download_task_logs. "
+        "Use when is_bug is true or the user asked. Supports friendly task IDs."
     ),
     sort_order=28,
     input_model=OptionalTaskScopeInput,
@@ -745,7 +747,10 @@ async def download_task_evidence(input: DownloadTaskEvidenceInput) -> list[Any]:
     group="tasks",
     display_name="List task logs",
     description=(
-        "List QA session log JSON files on a task. "
+        "List QA session log JSON files on a task (console warn/error and "
+        "failed HTTP from extension bug capture; not screenshots). "
+        "Metadata includes checklistItemId when scoped to a checklist step. "
+        "Use download_task_logs for capture.events. "
         "Supports friendly task IDs. Pass arc_todo_token on Grok HTTP calls."
     ),
     sort_order=30,
@@ -765,7 +770,10 @@ async def list_task_logs(input: OptionalTaskScopeInput) -> str:
     group="tasks",
     display_name="Download task logs",
     description=(
-        "Download one QA session log as JSON text. "
+        "Download one QA session log. Returns JSON with content.capture.events "
+        "(kind console|network: level/message/stack or method/status/url). "
+        "Call list_task_logs first for log_id. Not image evidence — use "
+        "download_task_evidence for screenshots/clips. "
         "Supports friendly task IDs. Pass arc_todo_token on Grok HTTP calls."
     ),
     sort_order=31,
