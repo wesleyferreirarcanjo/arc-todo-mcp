@@ -49,6 +49,11 @@ from app.tool_registry import (
     AddNameCandidatesInput,
     CheckNameCandidateInput,
     RecommendNameCandidateInput,
+    ListProjectSeoSitesInput,
+    GetSeoSiteInput,
+    CreateSeoSiteInput,
+    RunSeoAuditInput,
+    ListSeoKeywordsInput,
     ListProjectTasksInput,
     ListProjectsInput,
     ListTasksInput,
@@ -1587,5 +1592,98 @@ async def recommend_name_candidate(input: RecommendNameCandidateInput) -> str:
             "candidateId": input.candidate_id,
             "decisionNote": input.decision_note,
         },
+    )
+    return arc_todo_client.format_result(data)
+
+
+def _seo_sites_collection_path(organization_id: str, project_id: str) -> str:
+    return f"/organizations/{organization_id}/projects/{project_id}/seo-sites"
+
+
+def _seo_site_path(organization_id: str, project_id: str, site_id: str) -> str:
+    return f"{_seo_sites_collection_path(organization_id, project_id)}/{site_id}"
+
+
+@register_tool(
+    key="list_project_seo_sites",
+    group="seo",
+    display_name="List project SEO sites",
+    description="List SEO sites for a project (hostname, title, gscConnected). Never returns Search Console tokens.",
+    sort_order=90,
+    input_model=ListProjectSeoSitesInput,
+)
+async def list_project_seo_sites(input: ListProjectSeoSitesInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _seo_sites_collection_path(input.organization_id, input.project_id),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="get_seo_site",
+    group="seo",
+    display_name="Get SEO site",
+    description="Fetch one project SEO site. Never returns the Search Console refresh token.",
+    sort_order=91,
+    input_model=GetSeoSiteInput,
+)
+async def get_seo_site(input: GetSeoSiteInput) -> str:
+    data = await arc_todo_client.request(
+        "GET",
+        _seo_site_path(input.organization_id, input.project_id, input.site_id),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="create_seo_site",
+    group="seo",
+    display_name="Create SEO site",
+    description="Create a project SEO site from a public hostname. Empty or private addresses are refused.",
+    sort_order=92,
+    input_model=CreateSeoSiteInput,
+)
+async def create_seo_site(input: CreateSeoSiteInput) -> str:
+    body: dict[str, Any] = {"hostname": input.hostname}
+    if input.title is not None:
+        body["title"] = input.title
+    data = await arc_todo_client.request(
+        "POST",
+        _seo_sites_collection_path(input.organization_id, input.project_id),
+        json_body=body,
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="run_seo_audit",
+    group="seo",
+    display_name="Run SEO audit",
+    description="Enqueue a same-host crawl plus homepage Lighthouse for a SEO site. Returns a run id to poll.",
+    sort_order=93,
+    input_model=RunSeoAuditInput,
+)
+async def run_seo_audit(input: RunSeoAuditInput) -> str:
+    data = await arc_todo_client.request(
+        "POST",
+        f"{_seo_site_path(input.organization_id, input.project_id, input.site_id)}/audit",
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="list_seo_keywords",
+    group="seo",
+    display_name="List SEO keywords",
+    description="Fetch Search Console queries and pages for a connected site. Returns the not-connected error when disconnected.",
+    sort_order=94,
+    input_model=ListSeoKeywordsInput,
+)
+async def list_seo_keywords(input: ListSeoKeywordsInput) -> str:
+    data = await arc_todo_client.request(
+        "POST",
+        f"{_seo_site_path(input.organization_id, input.project_id, input.site_id)}/keywords",
+        json_body={},
     )
     return arc_todo_client.format_result(data)

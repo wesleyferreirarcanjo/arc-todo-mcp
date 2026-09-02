@@ -665,6 +665,31 @@ class RecommendNameCandidateInput(CheckNameCandidateInput):
     )
 
 
+class ListProjectSeoSitesInput(CallerTokenInput):
+    organization_id: str = Field(description="Organization UUID")
+    project_id: str = Field(description="Project UUID")
+
+
+class GetSeoSiteInput(ListProjectSeoSitesInput):
+    site_id: str = Field(description="SEO site UUID")
+
+
+class CreateSeoSiteInput(ListProjectSeoSitesInput):
+    hostname: str = Field(description="Public site hostname or URL, e.g. example.com")
+    title: str | None = Field(
+        default=None,
+        description="Optional display title. Omitted defaults to the hostname.",
+    )
+
+
+class RunSeoAuditInput(GetSeoSiteInput):
+    pass
+
+
+class ListSeoKeywordsInput(GetSeoSiteInput):
+    pass
+
+
 class GetProjectQaInfoInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
