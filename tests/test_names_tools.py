@@ -96,3 +96,19 @@ async def test_check_name_candidate_uses_session_name(monkeypatch, caller_auth):
     assert body == {"name": "Helios"}
     assert "unknown" in result
     assert "buy" not in result.lower()
+
+
+def test_names_catalog_does_not_create_sessions():
+    from app.tools import handlers as _handlers  # noqa: F401
+    from app.tool_registry import MCP_TOOL_REGISTRY
+
+    keys = {item.key for item in MCP_TOOL_REGISTRY if item.group == "names"}
+    assert "create_name_session" not in keys
+    assert {
+        "list_project_name_sessions",
+        "get_name_session",
+        "update_name_session",
+        "add_name_candidates",
+        "check_name_candidate",
+        "recommend_name_candidate",
+    } <= keys

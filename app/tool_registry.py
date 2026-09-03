@@ -619,18 +619,6 @@ class GetNameSessionInput(ListProjectNameSessionsInput):
     name_session_id: str = Field(description="Name session UUID")
 
 
-class CreateNameSessionInput(ListProjectNameSessionsInput):
-    title: str = Field(description="Session title (required, non-empty)")
-    naming_goal: str | None = Field(
-        default=None,
-        description="Optional naming goal: public_product, company, feature, api, internal_codename, campaign. Omitted defaults to public_product.",
-    )
-    product_description: dict[str, Any] | None = Field(
-        default=None,
-        description="Optional product-description canvas JSON",
-    )
-
-
 class UpdateNameSessionInput(GetNameSessionInput):
     title: str | None = Field(default=None, description="New session title")
     naming_goal: str | None = Field(default=None, description="Naming goal")

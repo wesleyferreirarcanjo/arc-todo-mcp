@@ -44,7 +44,6 @@ from app.tool_registry import (
     ListProjectWireframesInput,
     ListProjectNameSessionsInput,
     GetNameSessionInput,
-    CreateNameSessionInput,
     UpdateNameSessionInput,
     AddNameCandidatesInput,
     CheckNameCandidateInput,
@@ -1431,7 +1430,7 @@ def _name_session_path(
     key="list_project_name_sessions",
     group="names",
     display_name="List project name sessions",
-    description="List naming sessions for a project (id, title, recommendedName, timestamps; omits bulky candidates).",
+    description="List naming sessions for a project (id, title, recommendedName, candidateCount, timestamps; omits bulky candidates).",
     sort_order=70,
     input_model=ListProjectNameSessionsInput,
 )
@@ -1457,28 +1456,6 @@ async def get_name_session(input: GetNameSessionInput) -> str:
         _name_session_path(
             input.organization_id, input.project_id, input.name_session_id
         ),
-    )
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="create_name_session",
-    group="names",
-    display_name="Create name session",
-    description="Create a project naming session with a required title.",
-    sort_order=72,
-    input_model=CreateNameSessionInput,
-)
-async def create_name_session(input: CreateNameSessionInput) -> str:
-    body: dict[str, Any] = {"title": input.title}
-    if input.naming_goal is not None:
-        body["namingGoal"] = input.naming_goal
-    if input.product_description is not None:
-        body["productDescription"] = input.product_description
-    data = await arc_todo_client.request(
-        "POST",
-        _name_sessions_collection_path(input.organization_id, input.project_id),
-        json_body=body,
     )
     return arc_todo_client.format_result(data)
 
