@@ -17,6 +17,7 @@ from app.tool_registry import (
     AddTaskCommentInput,
     CreateTaskBugFlagInput,
     GetTaskBugFlagInput,
+    CreateOrganizationInput,
     CreateOrganizationUserInput,
     CreateKnowledgeInput,
     CreateProjectDiagramInput,
@@ -61,6 +62,8 @@ from app.tool_registry import (
     RetrieveKnowledgeInput,
     SetCallerAuthInput,
     UpdateKnowledgeInput,
+    UpdateOrganizationInput,
+    UpdateProjectInput,
     UpdateProjectDiagramInput,
     UpdateProjectWireframeInput,
     GetProjectQaInfoInput,
@@ -156,6 +159,102 @@ async def get_organization(input: GetOrganizationInput) -> str:
         f"/organizations/{input.organization_id}",
     )
     return arc_todo_client.format_result(data)
+
+
+def _row_name(row: Any) -> str:
+    if isinstance(row, dict):
+        return str(row.get("name") or "").strip()
+    return ""
+
+
+def _find_named_row(rows: Any, name: str) -> dict[str, Any] | None:
+    needle = name.strip()
+    if not needle or not isinstance(rows, list):
+        return None
+    for row in rows:
+        if isinstance(row, dict) and _row_name(row) == needle:
+            return row
+    return None
+
+
+def _create_organization_body(input: CreateOrganizationInput) -> dict[str, str]:
+    body: dict[str, str] = {"name": input.name.strip()}
+    if input.slug is not None:
+        body["slug"] = input.slug
+    if input.color is not None:
+        body["color"] = input.color
+    return body
+
+
+def _update_organization_body(input: UpdateOrganizationInput) -> dict[str, str]:
+    body: dict[str, str] = {}
+    if input.name is not None:
+        body["name"] = input.name
+    if input.slug is not None:
+        body["slug"] = input.slug
+    if input.color is not None:
+        body["color"] = input.color
+    return body
+
+
+@register_tool(
+    key="create_organization",
+    group="context",
+    display_name="Create organization",
+    description=(
+        "Create an organization. If the caller already has one with the same "
+        "trimmed name, return that row instead of inserting a duplicate."
+    ),
+    sort_order=15,
+    input_model=CreateOrganizationInput,
+)
+async def create_organization(input: CreateOrganizationInput) -> str:
+    existing = await arc_todo_client.request("GET", "/organizations")
+    match = _find_named_row(existing, input.name)
+    if match is not None:
+        return arc_todo_client.format_result(match)
+    data = await arc_todo_client.request(
+        "POST",
+        "/organizations",
+        json_body=_create_organization_body(input),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="update_organization",
+    group="context",
+    display_name="Update organization",
+    description="Update an organization name, slug, or color. Admin-only.",
+    sort_order=15,
+    input_model=UpdateOrganizationInput,
+)
+async def update_organization(input: UpdateOrganizationInput) -> str:
+    data = await arc_todo_client.request(
+        "PATCH",
+        f"/organizations/{input.organization_id}",
+        json_body=_update_organization_body(input),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
+    key="delete_organization",
+    group="context",
+    display_name="Delete organization",
+    description=(
+        "Delete an organization. This will remove the organization and its "
+        "projects."
+    ),
+    sort_order=15,
+    input_model=GetOrganizationInput,
+)
+async def delete_organization(input: GetOrganizationInput) -> str:
+    await arc_todo_client.request(
+        "DELETE",
+        f"/organizations/{input.organization_id}",
+    )
+    return '{"deleted": true}'
 
 
 @register_tool(
@@ -258,7 +357,18 @@ async def list_projects(input: ListProjectsInput) -> str:
 
 
 def _project_body(input: CreateProjectInput) -> dict[str, str]:
-    body: dict[str, str] = {"name": input.name}
+    body: dict[str, str] = {"name": input.name.strip()}
+    if input.description is not None:
+        body["description"] = input.description
+    if input.color is not None:
+        body["color"] = input.color
+    return body
+
+
+def _update_project_body(input: UpdateProjectInput) -> dict[str, str]:
+    body: dict[str, str] = {}
+    if input.name is not None:
+        body["name"] = input.name
     if input.description is not None:
         body["description"] = input.description
     if input.color is not None:
@@ -270,11 +380,22 @@ def _project_body(input: CreateProjectInput) -> dict[str, str]:
     key="create_project",
     group="context",
     display_name="Create project",
-    description="Create a project in an organization.",
+    description=(
+        "Create a project in an organization. If the caller already has one "
+        "with the same trimmed name in that organization, return that row "
+        "instead of inserting a duplicate."
+    ),
     sort_order=17,
     input_model=CreateProjectInput,
 )
 async def create_project(input: CreateProjectInput) -> str:
+    existing = await arc_todo_client.request(
+        "GET",
+        f"/organizations/{input.organization_id}/projects",
+    )
+    match = _find_named_row(existing, input.name)
+    if match is not None:
+        return arc_todo_client.format_result(match)
     data = await arc_todo_client.request(
         "POST",
         f"/organizations/{input.organization_id}/projects",
@@ -300,10 +421,30 @@ async def get_project(input: GetProjectInput) -> str:
 
 
 @register_tool(
+    key="update_project",
+    group="context",
+    display_name="Update project",
+    description="Update a project name, description, or color. Admin-only.",
+    sort_order=19,
+    input_model=UpdateProjectInput,
+)
+async def update_project(input: UpdateProjectInput) -> str:
+    data = await arc_todo_client.request(
+        "PATCH",
+        f"/organizations/{input.organization_id}/projects/{input.project_id}",
+        json_body=_update_project_body(input),
+    )
+    return arc_todo_client.format_result(data)
+
+
+@register_tool(
     key="delete_project",
     group="context",
     display_name="Delete project",
-    description="Delete a project from an organization.",
+    description=(
+        "Delete a project from an organization. This will remove the project "
+        "and its tasks."
+    ),
     sort_order=19,
     input_model=GetProjectInput,
 )

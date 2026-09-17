@@ -66,6 +66,9 @@ class ArcTodoClient:
                 message = ", ".join(data["message"])
             elif isinstance(data.get("message"), str):
                 message = data["message"]
+            code = data.get("code")
+            if isinstance(code, str) and code:
+                message = f"{code}: {message}"
         except Exception:
             pass
         raise ArcTodoApiError(message, response.status_code)

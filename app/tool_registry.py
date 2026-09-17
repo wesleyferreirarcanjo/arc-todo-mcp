@@ -98,6 +98,31 @@ class GetOrganizationInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
 
 
+class CreateOrganizationInput(CallerTokenInput):
+    name: str = Field(description="Organization name")
+    slug: str | None = Field(
+        default=None,
+        description="Optional lowercase slug with hyphens",
+    )
+    color: str | None = Field(
+        default=None,
+        description="Optional hex color (e.g. #737373)",
+    )
+
+
+class UpdateOrganizationInput(CallerTokenInput):
+    organization_id: str = Field(description="Organization UUID")
+    name: str | None = Field(default=None, description="Organization name")
+    slug: str | None = Field(
+        default=None,
+        description="Optional lowercase slug with hyphens",
+    )
+    color: str | None = Field(
+        default=None,
+        description="Optional hex color (e.g. #737373)",
+    )
+
+
 class ListOrganizationMembersInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
 
@@ -145,6 +170,17 @@ class CreateProjectInput(CallerTokenInput):
 class GetProjectInput(CallerTokenInput):
     organization_id: str = Field(description="Organization UUID")
     project_id: str = Field(description="Project UUID")
+
+
+class UpdateProjectInput(CallerTokenInput):
+    organization_id: str = Field(description="Organization UUID")
+    project_id: str = Field(description="Project UUID")
+    name: str | None = Field(default=None, description="Project name")
+    description: str | None = Field(default=None, description="Project description")
+    color: str | None = Field(
+        default=None,
+        description="Optional hex color (e.g. #8778a3)",
+    )
 
 
 class ListPersonsInput(CallerTokenInput):
