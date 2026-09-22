@@ -621,6 +621,47 @@ async def test_download_task_evidence_returns_image_content(api_client):
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_download_task_evidence_skips_video_bytes(api_client):
+    from mcp.types import TextContent
+
+    org_id = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
+    project_id = "d576e04d-f683-4b88-a374-0aab28a4be10"
+    task_id = "22222222-2222-2222-2222-222222222222"
+    evidence_id = "33333333-3333-3333-3333-333333333333"
+    webm_bytes = b"\x1a\x45\xdf\xa3fake-webm"
+    route = respx.get(
+        f"http://api.test/organizations/{org_id}/projects/{project_id}/tasks/{task_id}"
+        f"/evidence/{evidence_id}/download"
+    ).mock(
+        return_value=Response(
+            200,
+            content=webm_bytes,
+            headers={
+                "content-type": "video/webm",
+                "content-disposition": 'attachment; filename="clip-repro.webm"',
+            },
+        )
+    )
+
+    result = await download_task_evidence(
+        DownloadTaskEvidenceInput(
+            organization_id=org_id,
+            project_id=project_id,
+            task_id=task_id,
+            evidence_id=evidence_id,
+        )
+    )
+
+    assert route.called
+    assert len(result) == 1
+    assert isinstance(result[0], TextContent)
+    assert '"viewable":false' in result[0].text
+    assert "clip-repro.webm" in result[0].text
+    assert "contentBase64" not in result[0].text
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_download_task_logs_returns_json_text(api_client):
     from mcp.types import TextContent
 

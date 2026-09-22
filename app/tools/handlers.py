@@ -814,7 +814,8 @@ async def list_task_evidence(input: OptionalTaskScopeInput) -> str:
     display_name="Download task evidence",
     description=(
         "Download one task evidence file. Images return as MCP image content for vision; "
-        "all files also include filename/mime/size metadata (and base64 for non-images)."
+        "videos return metadata only (viewable: false) with no file bytes. "
+        "All files include filename/mime/size metadata (and base64 for other non-images)."
     ),
     sort_order=29,
     input_model=DownloadTaskEvidenceInput,
@@ -826,8 +827,17 @@ async def download_task_evidence(input: DownloadTaskEvidenceInput) -> list[Any]:
         f"/evidence/{input.evidence_id}/download",
     )
     mime = (mime_type or "application/octet-stream").split(";")[0].strip()
+    if mime.startswith("video/"):
+        meta: dict[str, Any] = {
+            "id": input.evidence_id,
+            "filename": filename,
+            "mimeType": mime,
+            "sizeBytes": len(content),
+            "viewable": False,
+        }
+        return [TextContent(type="text", text=arc_todo_client.format_result(meta))]
     b64 = base64.b64encode(content).decode("ascii")
-    meta: dict[str, Any] = {
+    meta = {
         "id": input.evidence_id,
         "filename": filename,
         "mimeType": mime,
