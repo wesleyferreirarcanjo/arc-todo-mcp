@@ -422,7 +422,7 @@ async def test_create_task_bug_flag_posts_dossier(api_client):
                 "title": "Corrigir Navigate",
                 "primary": "REAL_DEFECT",
                 "secondary": ["regression", "not_deployed"],
-                "motivo": "URL goes to /knowledge",
+                "motivo": "URL goes to the wrong page",
                 "evidence": "image.png",
                 "taskScore": 7,
                 "flagScore": 9,
@@ -437,7 +437,7 @@ async def test_create_task_bug_flag_posts_dossier(api_client):
             task_id=task_id,
             primary="REAL_DEFECT",
             secondary=["regression", "not_deployed"],
-            motivo="URL goes to /knowledge",
+            motivo="URL goes to the wrong page",
             evidence="image.png",
             task_score=7,
             flag_score=9,
@@ -451,7 +451,7 @@ async def test_create_task_bug_flag_posts_dossier(api_client):
     assert "not_deployed" in body
     assert '"taskScore":7' in body.replace(" ", "")
     assert '"flagScore":9' in body.replace(" ", "")
-    assert "URL goes to /knowledge" in result
+    assert "URL goes to the wrong page" in result
 
 
 @pytest.mark.asyncio

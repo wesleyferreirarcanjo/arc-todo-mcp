@@ -183,21 +183,6 @@ class UpdateProjectInput(CallerTokenInput):
     )
 
 
-class ListPersonsInput(CallerTokenInput):
-    organization_id: str | None = Field(
-        default=None,
-        description="Optional organization UUID. Omit for global persons.",
-    )
-
-
-class GetPersonInput(CallerTokenInput):
-    organization_id: str | None = Field(
-        default=None,
-        description="Optional organization UUID. Omit for global person lookup.",
-    )
-    person_id: str = Field(description="Person UUID")
-
-
 class ListTasksInput(CallerTokenInput):
     organization_id: str | None = Field(
         default=None,
@@ -515,76 +500,6 @@ class UpdateTaskInput(OptionalTaskScopeInput):
             "Response shape: ack | summary | plan | qa | full. Default ack "
             "(id/title/status only). Do not use this tool to only change status — use move_task."
         ),
-    )
-
-
-class KnowledgeScopeInput(CallerTokenInput):
-    scope: str = Field(description="general | organization | project | person")
-    organization_id: str | None = None
-    project_id: str | None = None
-    person_id: str | None = None
-    file_name: str | None = None
-    mime_type: str | None = None
-    has_attachments: bool | None = None
-
-
-class KnowledgeEntryInput(KnowledgeScopeInput):
-    knowledge_id: str
-
-
-class CreateKnowledgeInput(KnowledgeScopeInput):
-    title: str
-    content: str
-
-
-class UpdateKnowledgeInput(KnowledgeEntryInput):
-    title: str | None = None
-    content: str | None = None
-
-
-class ListAttachmentsInput(KnowledgeEntryInput):
-    file_name: str | None = None
-    mime_type: str | None = None
-    tag: str | None = None
-
-
-class UploadAttachmentInput(KnowledgeEntryInput):
-    filename: str
-    mime_type: str
-    content_base64: str
-    description: str | None = None
-    tags: str | None = None
-
-
-class DownloadAttachmentInput(KnowledgeEntryInput):
-    attachment_id: str
-
-
-class DeleteAttachmentInput(DownloadAttachmentInput):
-    pass
-
-
-class RetrieveKnowledgeInput(CallerTokenInput):
-    question: str = Field(description="Natural-language question to search indexed knowledge")
-    organization_id: str | None = Field(
-        default=None,
-        description="Organization UUID. With project_id selects project scope; alone selects organization scope.",
-    )
-    project_id: str | None = Field(
-        default=None,
-        description="Project UUID. Requires organization_id for project-scoped retrieval.",
-    )
-    person_id: str | None = Field(
-        default=None,
-        description="Person UUID for person-scoped retrieval (includes general + person knowledge).",
-    )
-    top_k: int | None = Field(
-        default=None,
-        description="Max chunks to return (default from RAG settings)",
-    )
-    max_context_tokens: int | None = Field(
-        default=None,
-        description="Token budget for context (default from RAG settings)",
     )
 
 

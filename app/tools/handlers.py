@@ -8,8 +8,7 @@ from mcp.types import ImageContent, TextContent
 
 from app.arc_todo_client import arc_todo_client
 from app.board_scope import last_board, remember_board, resolve_board_scope
-from app.caller_auth import normalize_caller_token, require_caller_token
-from app.rag_client import RagClientError, rag_client
+from app.caller_auth import normalize_caller_token
 from app.task_id_resolver import is_uuid, resolve_task_scope
 from app.task_include import normalize_include, project_payload
 from app.tool_registry import (
@@ -19,28 +18,20 @@ from app.tool_registry import (
     GetTaskBugFlagInput,
     CreateOrganizationInput,
     CreateOrganizationUserInput,
-    CreateKnowledgeInput,
     CreateProjectDiagramInput,
     CreateProjectInput,
     CreateProjectWireframeInput,
     CreateTaskInput,
-    DeleteAttachmentInput,
-    DownloadAttachmentInput,
     DownloadTaskEvidenceInput,
     DownloadTaskLogInput,
     EmptyInput,
     GetOrganizationInput,
-    GetPersonInput,
     GetProjectDiagramInput,
     GetProjectInput,
     GetProjectWireframeInput,
     GetTaskInput,
-    KnowledgeEntryInput,
-    KnowledgeScopeInput,
-    ListAttachmentsInput,
     ListOrganizationActivityInput,
     ListOrganizationMembersInput,
-    ListPersonsInput,
     ListProjectDiagramsInput,
     ListProjectWireframesInput,
     CallerTokenInput,
@@ -59,9 +50,7 @@ from app.tool_registry import (
     ListTasksInput,
     MoveTaskInput,
     OptionalTaskScopeInput,
-    RetrieveKnowledgeInput,
     SetCallerAuthInput,
-    UpdateKnowledgeInput,
     UpdateOrganizationInput,
     UpdateProjectInput,
     UpdateProjectDiagramInput,
@@ -69,7 +58,6 @@ from app.tool_registry import (
     GetProjectQaInfoInput,
     UpdateProjectQaInfoInput,
     UpdateTaskInput,
-    UploadAttachmentInput,
     register_tool,
 )
 
@@ -454,40 +442,6 @@ async def delete_project(input: GetProjectInput) -> str:
         f"/organizations/{input.organization_id}/projects/{input.project_id}",
     )
     return '{"deleted": true}'
-
-
-@register_tool(
-    key="list_persons",
-    group="context",
-    display_name="List persons",
-    description="List persons globally or within an organization.",
-    sort_order=20,
-    input_model=ListPersonsInput,
-)
-async def list_persons(input: ListPersonsInput) -> str:
-    if input.organization_id:
-        path = f"/organizations/{input.organization_id}/persons"
-    else:
-        path = "/persons"
-    data = await arc_todo_client.request("GET", path)
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="get_person",
-    group="context",
-    display_name="Get person",
-    description="Fetch one person globally or within an organization.",
-    sort_order=21,
-    input_model=GetPersonInput,
-)
-async def get_person(input: GetPersonInput) -> str:
-    if input.organization_id:
-        path = f"/organizations/{input.organization_id}/persons/{input.person_id}"
-    else:
-        path = f"/persons/{input.person_id}"
-    data = await arc_todo_client.request("GET", path)
-    return arc_todo_client.format_result(data)
 
 
 def _task_body(input: CreateTaskInput | UpdateTaskInput) -> dict:
@@ -1017,263 +971,6 @@ async def create_task_bug_flag(input: CreateTaskBugFlagInput) -> str:
         "/analytics/bug-flags",
         json_body=body,
     )
-    return arc_todo_client.format_result(data)
-
-
-def _knowledge_collection_path(input: KnowledgeScopeInput) -> str:
-    scope = input.scope
-    if scope == "general":
-        return "/knowledge"
-    if scope == "organization":
-        if not input.organization_id:
-            raise ValueError("organization_id is required for organization scope")
-        return f"/organizations/{input.organization_id}/knowledge"
-    if scope == "project":
-        if not input.organization_id or not input.project_id:
-            raise ValueError("organization_id and project_id are required for project scope")
-        return (
-            f"/organizations/{input.organization_id}/projects/{input.project_id}/knowledge"
-        )
-    if scope == "person":
-        if input.organization_id and input.person_id:
-            return (
-                f"/organizations/{input.organization_id}/persons/{input.person_id}/knowledge"
-            )
-        if input.person_id:
-            return f"/persons/{input.person_id}/knowledge"
-        raise ValueError("person_id is required for person scope")
-    raise ValueError(f"Unsupported scope: {scope}")
-
-
-def _knowledge_entry_path(input: KnowledgeEntryInput) -> str:
-    return f"{_knowledge_collection_path(input)}/{input.knowledge_id}"
-
-
-def _attachments_base_path(input: KnowledgeEntryInput) -> str:
-    return f"{_knowledge_entry_path(input)}/attachments"
-
-
-@register_tool(
-    key="list_knowledge",
-    group="knowledge",
-    display_name="List knowledge",
-    description="List knowledge entries for a scope or cross-scope filters.",
-    sort_order=30,
-    input_model=KnowledgeScopeInput,
-)
-async def list_knowledge(input: KnowledgeScopeInput) -> str:
-    if input.scope == "general" and not any(
-        [input.organization_id, input.project_id, input.person_id, input.file_name, input.mime_type, input.has_attachments]
-    ):
-        data = await arc_todo_client.request("GET", "/knowledge")
-    elif input.scope == "general" and any(
-        [input.scope, input.organization_id, input.project_id, input.person_id]
-    ):
-        params = {
-            k: v
-            for k, v in {
-                "scope": input.scope,
-                "organizationId": input.organization_id,
-                "projectId": input.project_id,
-                "personId": input.person_id,
-                "fileName": input.file_name,
-                "mimeType": input.mime_type,
-                "hasAttachments": "true" if input.has_attachments else None,
-            }.items()
-            if v is not None
-        }
-        data = await arc_todo_client.request("GET", "/knowledge", params=params)
-    else:
-        data = await arc_todo_client.request("GET", _knowledge_collection_path(input))
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="get_knowledge",
-    group="knowledge",
-    display_name="Get knowledge",
-    description="Fetch one knowledge entry in the selected scope.",
-    sort_order=31,
-    input_model=KnowledgeEntryInput,
-)
-async def get_knowledge(input: KnowledgeEntryInput) -> str:
-    data = await arc_todo_client.request("GET", _knowledge_entry_path(input))
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="create_knowledge",
-    group="knowledge",
-    display_name="Create knowledge",
-    description="Create a knowledge entry in the selected scope.",
-    sort_order=32,
-    input_model=CreateKnowledgeInput,
-)
-async def create_knowledge(input: CreateKnowledgeInput) -> str:
-    data = await arc_todo_client.request(
-        "POST",
-        _knowledge_collection_path(input),
-        json_body={"title": input.title, "content": input.content},
-    )
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="update_knowledge",
-    group="knowledge",
-    display_name="Update knowledge",
-    description="Update a knowledge entry in the selected scope.",
-    sort_order=33,
-    input_model=UpdateKnowledgeInput,
-)
-async def update_knowledge(input: UpdateKnowledgeInput) -> str:
-    body = {
-        k: v
-        for k, v in {"title": input.title, "content": input.content}.items()
-        if v is not None
-    }
-    data = await arc_todo_client.request(
-        "PATCH",
-        _knowledge_entry_path(input),
-        json_body=body,
-    )
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="delete_knowledge",
-    group="knowledge",
-    display_name="Delete knowledge",
-    description="Delete a knowledge entry in the selected scope.",
-    sort_order=34,
-    input_model=KnowledgeEntryInput,
-)
-async def delete_knowledge(input: KnowledgeEntryInput) -> str:
-    await arc_todo_client.request("DELETE", _knowledge_entry_path(input))
-    return '{"deleted": true}'
-
-
-@register_tool(
-    key="list_knowledge_attachments",
-    group="knowledge",
-    display_name="List knowledge attachments",
-    description="List attachments for a knowledge entry.",
-    sort_order=35,
-    input_model=ListAttachmentsInput,
-)
-async def list_knowledge_attachments(input: ListAttachmentsInput) -> str:
-    params = {
-        k: v
-        for k, v in {
-            "fileName": input.file_name,
-            "mimeType": input.mime_type,
-            "tag": input.tag,
-        }.items()
-        if v is not None
-    }
-    data = await arc_todo_client.request(
-        "GET",
-        _attachments_base_path(input),
-        params=params,
-    )
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="upload_knowledge_attachment",
-    group="knowledge",
-    display_name="Upload knowledge attachment",
-    description="Upload a base64-encoded file attachment to a knowledge entry.",
-    sort_order=36,
-    input_model=UploadAttachmentInput,
-)
-async def upload_knowledge_attachment(input: UploadAttachmentInput) -> str:
-    content = base64.b64decode(input.content_base64)
-    form_fields: dict[str, str] = {}
-    if input.description:
-        form_fields["description"] = input.description
-    if input.tags:
-        form_fields["tags"] = input.tags
-    data = await arc_todo_client.upload_multipart(
-        _attachments_base_path(input),
-        file_field="file",
-        filename=input.filename,
-        content=content,
-        mime_type=input.mime_type,
-        form_fields=form_fields,
-    )
-    return arc_todo_client.format_result(data)
-
-
-@register_tool(
-    key="download_knowledge_attachment",
-    group="knowledge",
-    display_name="Download knowledge attachment",
-    description="Download an attachment and return base64-encoded content.",
-    sort_order=37,
-    input_model=DownloadAttachmentInput,
-)
-async def download_knowledge_attachment(input: DownloadAttachmentInput) -> str:
-    content, mime_type, filename = await arc_todo_client.download(
-        f"{_attachments_base_path(input)}/{input.attachment_id}/download",
-    )
-    payload = {
-        "filename": filename,
-        "mimeType": mime_type,
-        "sizeBytes": len(content),
-        "contentBase64": base64.b64encode(content).decode("ascii"),
-    }
-    return arc_todo_client.format_result(payload)
-
-
-@register_tool(
-    key="delete_knowledge_attachment",
-    group="knowledge",
-    display_name="Delete knowledge attachment",
-    description="Delete an attachment from a knowledge entry.",
-    sort_order=38,
-    input_model=DeleteAttachmentInput,
-)
-async def delete_knowledge_attachment(input: DeleteAttachmentInput) -> str:
-    await arc_todo_client.request(
-        "DELETE",
-        f"{_attachments_base_path(input)}/{input.attachment_id}",
-    )
-    return '{"deleted": true}'
-
-
-@register_tool(
-    key="retrieve_knowledge",
-    group="rag",
-    display_name="Retrieve knowledge",
-    description=(
-        "Search indexed Arc Todo knowledge for relevant chunks. "
-        "Omit scope ids for general knowledge; provide organization_id for org scope; "
-        "organization_id + project_id for project scope (includes general + org + project chunks); "
-        "person_id for person scope."
-    ),
-    sort_order=40,
-    input_model=RetrieveKnowledgeInput,
-)
-async def retrieve_knowledge(input: RetrieveKnowledgeInput) -> str:
-    if input.project_id and not input.organization_id:
-        raise ValueError("organization_id is required when project_id is provided")
-
-    token = require_caller_token()
-    try:
-        data = await rag_client.retrieve(
-            token=token,
-            question=input.question,
-            organization_id=input.organization_id,
-            project_id=input.project_id,
-            person_id=input.person_id,
-            top_k=input.top_k,
-            max_context_tokens=input.max_context_tokens,
-        )
-    except RagClientError as exc:
-        if exc.status_code == 503:
-            return arc_todo_client.format_result({"error": "RAG is disabled"})
-        raise ValueError(str(exc)) from exc
     return arc_todo_client.format_result(data)
 
 

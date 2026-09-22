@@ -110,29 +110,6 @@ class ArcTodoClient:
     ) -> Any:
         return await self.request(method, path, params=params, auth=False)
 
-    async def upload_multipart(
-        self,
-        path: str,
-        *,
-        file_field: str,
-        filename: str,
-        content: bytes,
-        mime_type: str,
-        form_fields: dict[str, str] | None = None,
-    ) -> Any:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            files = {file_field: (filename, content, mime_type)}
-            data = form_fields or {}
-            response = await client.post(
-                f"{self._base_url}{path}",
-                headers=self._auth_headers(allow_service_account=False),
-                files=files,
-                data=data,
-            )
-            if not response.is_success:
-                await self._raise_api_error(response)
-            return response.json()
-
     async def download(self, path: str) -> tuple[bytes, str, str]:
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.get(
