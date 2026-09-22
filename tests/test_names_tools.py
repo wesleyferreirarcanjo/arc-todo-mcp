@@ -8,8 +8,6 @@ from app.arc_todo_client import arc_todo_client
 from app.tools.handlers import add_name_candidates, check_name_candidate
 from app.tool_registry import AddNameCandidatesInput, CheckNameCandidateInput, NameCandidateItemInput
 
-ORG = "57df4a79-d87d-40e1-9fb0-2da29d8ebecf"
-PROJECT = "d576e04d-f683-4b88-a374-0aab28a4be10"
 SESSION = "3f5d500d-58f6-4469-8230-f41d27a2511c"
 
 
@@ -22,7 +20,7 @@ async def test_add_name_candidates_forces_mcp_source(monkeypatch, caller_auth):
     arc_todo_client._token = "token-abc"
 
     route = respx.post(
-        f"http://api.test/organizations/{ORG}/projects/{PROJECT}/name-sessions/{SESSION}/candidates"
+        f"http://api.test/name-sessions/{SESSION}/candidates"
     ).mock(
         return_value=Response(
             201,
@@ -36,8 +34,6 @@ async def test_add_name_candidates_forces_mcp_source(monkeypatch, caller_auth):
 
     result = await add_name_candidates(
         AddNameCandidatesInput(
-            organization_id=ORG,
-            project_id=PROJECT,
             name_session_id=SESSION,
             candidates=[NameCandidateItemInput(name="Helios", family="invented")],
         )
@@ -59,7 +55,7 @@ async def test_check_name_candidate_uses_session_name(monkeypatch, caller_auth):
     arc_todo_client._token = "token-abc"
 
     respx.get(
-        f"http://api.test/organizations/{ORG}/projects/{PROJECT}/name-sessions/{SESSION}"
+        f"http://api.test/name-sessions/{SESSION}"
     ).mock(
         return_value=Response(
             200,
@@ -70,7 +66,7 @@ async def test_check_name_candidate_uses_session_name(monkeypatch, caller_auth):
         )
     )
     check = respx.post(
-        f"http://api.test/organizations/{ORG}/projects/{PROJECT}/name-sessions/{SESSION}/check"
+        f"http://api.test/name-sessions/{SESSION}/check"
     ).mock(
         return_value=Response(
             200,
@@ -84,8 +80,6 @@ async def test_check_name_candidate_uses_session_name(monkeypatch, caller_auth):
 
     result = await check_name_candidate(
         CheckNameCandidateInput(
-            organization_id=ORG,
-            project_id=PROJECT,
             name_session_id=SESSION,
             candidate_id="cand-1",
         )

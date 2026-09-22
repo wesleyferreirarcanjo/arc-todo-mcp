@@ -646,12 +646,7 @@ class UpdateProjectWireframeInput(GetProjectWireframeInput):
     )
 
 
-class ListProjectNameSessionsInput(CallerTokenInput):
-    organization_id: str = Field(description="Organization UUID")
-    project_id: str = Field(description="Project UUID")
-
-
-class GetNameSessionInput(ListProjectNameSessionsInput):
+class GetNameSessionInput(CallerTokenInput):
     name_session_id: str = Field(description="Name session UUID")
 
 

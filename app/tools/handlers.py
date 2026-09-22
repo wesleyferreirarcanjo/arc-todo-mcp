@@ -43,7 +43,7 @@ from app.tool_registry import (
     ListPersonsInput,
     ListProjectDiagramsInput,
     ListProjectWireframesInput,
-    ListProjectNameSessionsInput,
+    CallerTokenInput,
     GetNameSessionInput,
     UpdateNameSessionInput,
     AddNameCandidatesInput,
@@ -1557,28 +1557,26 @@ async def delete_project_wireframe(input: GetProjectWireframeInput) -> str:
     return '{"deleted": true}'
 
 
-def _name_sessions_collection_path(organization_id: str, project_id: str) -> str:
-    return f"/organizations/{organization_id}/projects/{project_id}/name-sessions"
+def _name_sessions_collection_path() -> str:
+    return "/name-sessions"
 
 
-def _name_session_path(
-    organization_id: str, project_id: str, name_session_id: str
-) -> str:
-    return f"{_name_sessions_collection_path(organization_id, project_id)}/{name_session_id}"
+def _name_session_path(name_session_id: str) -> str:
+    return f"{_name_sessions_collection_path()}/{name_session_id}"
 
 
 @register_tool(
     key="list_project_name_sessions",
     group="names",
     display_name="List project name sessions",
-    description="List naming sessions for a project (id, title, recommendedName, candidateCount, timestamps; omits bulky candidates).",
+    description="List naming sessions (id, title, recommendedName, candidateCount, timestamps; omits bulky candidates). Not scoped to a project.",
     sort_order=70,
-    input_model=ListProjectNameSessionsInput,
+    input_model=CallerTokenInput,
 )
-async def list_project_name_sessions(input: ListProjectNameSessionsInput) -> str:
+async def list_project_name_sessions(_input: CallerTokenInput) -> str:
     data = await arc_todo_client.request(
         "GET",
-        _name_sessions_collection_path(input.organization_id, input.project_id),
+        _name_sessions_collection_path(),
     )
     return arc_todo_client.format_result(data)
 
@@ -1594,9 +1592,7 @@ async def list_project_name_sessions(input: ListProjectNameSessionsInput) -> str
 async def get_name_session(input: GetNameSessionInput) -> str:
     data = await arc_todo_client.request(
         "GET",
-        _name_session_path(
-            input.organization_id, input.project_id, input.name_session_id
-        ),
+        _name_session_path(input.name_session_id),
     )
     return arc_todo_client.format_result(data)
 
@@ -1621,9 +1617,7 @@ async def update_name_session(input: UpdateNameSessionInput) -> str:
     }
     data = await arc_todo_client.request(
         "PATCH",
-        _name_session_path(
-            input.organization_id, input.project_id, input.name_session_id
-        ),
+        _name_session_path(input.name_session_id),
         json_body=body,
     )
     return arc_todo_client.format_result(data)
@@ -1656,7 +1650,7 @@ async def add_name_candidates(input: AddNameCandidatesInput) -> str:
     }
     data = await arc_todo_client.request(
         "POST",
-        f"{_name_session_path(input.organization_id, input.project_id, input.name_session_id)}/candidates",
+        f"{_name_session_path(input.name_session_id)}/candidates",
         json_body=body,
     )
     return arc_todo_client.format_result(data)
@@ -1673,9 +1667,7 @@ async def add_name_candidates(input: AddNameCandidatesInput) -> str:
 async def check_name_candidate(input: CheckNameCandidateInput) -> str:
     session = await arc_todo_client.request(
         "GET",
-        _name_session_path(
-            input.organization_id, input.project_id, input.name_session_id
-        ),
+        _name_session_path(input.name_session_id),
     )
     candidates = session.get("candidates") if isinstance(session, dict) else None
     name = None
@@ -1688,7 +1680,7 @@ async def check_name_candidate(input: CheckNameCandidateInput) -> str:
         return '{"error": "Candidate not found"}'
     data = await arc_todo_client.request(
         "POST",
-        f"{_name_session_path(input.organization_id, input.project_id, input.name_session_id)}/check",
+        f"{_name_session_path(input.name_session_id)}/check",
         json_body={"name": name},
     )
     return arc_todo_client.format_result(data)
@@ -1705,7 +1697,7 @@ async def check_name_candidate(input: CheckNameCandidateInput) -> str:
 async def recommend_name_candidate(input: RecommendNameCandidateInput) -> str:
     data = await arc_todo_client.request(
         "POST",
-        f"{_name_session_path(input.organization_id, input.project_id, input.name_session_id)}/recommend",
+        f"{_name_session_path(input.name_session_id)}/recommend",
         json_body={
             "candidateId": input.candidate_id,
             "decisionNote": input.decision_note,
