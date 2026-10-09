@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     arc_todo_username: str | None = None
     arc_todo_password: str | None = None
     arc_todo_access_token: str | None = None
+    # arc-hub admin tools call the hub directly; the hub token is a server-side
+    # secret and is never a tool argument or part of tool output.
+    arc_hub_base_url: str | None = None
+    arc_hub_token: str | None = None
     mcp_tool_settings_refresh_on_start: bool = True
 
 

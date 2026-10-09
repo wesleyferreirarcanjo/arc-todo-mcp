@@ -81,11 +81,14 @@ class ArcTodoClient:
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
         auth: bool = True,
+        extra_headers: dict[str, str] | None = None,
     ) -> Any:
         async with httpx.AsyncClient(timeout=60.0) as client:
             headers = None
             if auth:
                 headers = self._auth_headers(allow_service_account=False)
+            if extra_headers:
+                headers = {**(headers or {}), **extra_headers}
             response = await client.request(
                 method,
                 f"{self._base_url}{path}",

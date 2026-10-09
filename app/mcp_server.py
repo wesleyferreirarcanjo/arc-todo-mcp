@@ -19,7 +19,11 @@ from app.caller_auth import (
 from app.tool_registry import MCP_TOOL_REGISTRY, ToolDefinition
 
 # Import handlers so @register_tool decorators populate MCP_TOOL_REGISTRY.
+import app.tools.cloud  # noqa: F401
 import app.tools.handlers  # noqa: F401
+import app.tools.hub  # noqa: F401
+import app.tools.metrics  # noqa: F401
+import app.tools.observer  # noqa: F401
 
 ToolContent = TextContent | ImageContent
 
