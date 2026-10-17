@@ -26,6 +26,8 @@ cp .env.example .env
 | `ARC_TODO_USERNAME` | — | Service account username |
 | `ARC_TODO_PASSWORD` | — | Service account password |
 | `ARC_TODO_ACCESS_TOKEN` | — | Optional pre-issued bearer token |
+| `ARC_HUB_BASE_URL` | — | arc-hub origin; enables the `hub_*` admin tools (unset disables them with a "not configured" error) |
+| `ARC_HUB_TOKEN` | — | Server-side hub bearer for `hub_*` tools; never a tool argument |
 | `MCP_TOOL_SETTINGS_REFRESH_ON_START` | `true` | Load enabled tools from API on startup |
 
 ## Run locally
