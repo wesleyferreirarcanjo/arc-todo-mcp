@@ -193,7 +193,8 @@ class CloudProxyConfirmInput(CloudServerIdInput):
     display_name="Cloud proxy status",
     description=(
         "Show the arc-cloud Traefik proxy state on one server "
-        "(not_installed, running, error) with version and last detail."
+        "(not_installed, installing, running, restoring, error) with "
+        "version and last detail. Poll this after install/rollback."
     ),
     sort_order=106,
     input_model=CloudServerIdInput,
@@ -210,8 +211,11 @@ async def cloud_proxy_status(input: CloudServerIdInput) -> str:
     description=(
         "Take over ports 80/443 with the arc-cloud Traefik proxy while "
         "preserving the detected panel routes (Coolify labels or Easypanel "
-        "route files). Requires confirm=true. Refuses build machines and "
-        "unsafe routing; auto-rolls-back on post-check failure."
+        "route files). Requires confirm=true. Async: returns 202 "
+        "'installing' and the work continues master-side — poll "
+        "cloud_proxy_status until running or error (detail names refusals). "
+        "Refuses build machines and unsafe routing; auto-rolls-back on "
+        "post-check failure."
     ),
     default_enabled=False,
     sort_order=107,
@@ -234,7 +238,9 @@ async def cloud_install_proxy(input: CloudProxyConfirmInput) -> str:
     display_name="Rollback cloud proxy",
     description=(
         "Remove arc-cloud-proxy and restore the panel proxy recorded at "
-        "install, then re-check the routed hosts. Requires confirm=true."
+        "install, then re-check the routed hosts. Requires confirm=true. "
+        "Async: returns 202 'restoring' — poll cloud_proxy_status until "
+        "not_installed or error."
     ),
     default_enabled=False,
     sort_order=108,
