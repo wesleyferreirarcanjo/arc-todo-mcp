@@ -10,8 +10,6 @@ class Settings(BaseSettings):
 
     port: int = 8000
     arc_todo_api_base_url: str = "http://localhost:3000"
-    arc_todo_username: str | None = None
-    arc_todo_password: str | None = None
     arc_todo_access_token: str | None = None
     # arc-hub admin tools call the hub directly; the hub token is a server-side
     # secret and is never a tool argument or part of tool output.

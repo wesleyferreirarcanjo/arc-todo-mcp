@@ -51,9 +51,7 @@ Secrets are stored in Coolify only. Do not commit real values.
 | --- | --- |
 | `PORT` | `8000` |
 | `ARC_TODO_API_BASE_URL` | Public or internal API URL |
-| `ARC_TODO_USERNAME` | Service account username |
-| `ARC_TODO_PASSWORD` | *(redacted — Coolify secret)* |
-| `ARC_TODO_ACCESS_TOKEN` | Optional bearer token instead of username/password |
+| `ARC_TODO_ACCESS_TOKEN` | Required service JWT (no username/password fallback) |
 | `ARC_HUB_BASE_URL` | arc-hub origin for the `hub_*` admin tools — they call the hub directly (not through `arc-todo-api`). Use the hub's Coolify public URL (Coolify project `arc-ide`, app `arc-hub`; see [../arc-hub/README.md](../arc-hub/README.md) §Coolify). Unset, `hub_*` tools raise "arc-hub is not configured". |
 | `ARC_HUB_TOKEN` | *(redacted — Coolify secret)* — server-side bearer for `hub_*` tools; must equal arc-hub's own `ARC_HUB_TOKEN`. Never a tool argument. |
 | `MCP_TOOL_SETTINGS_REFRESH_ON_START` | `true` |

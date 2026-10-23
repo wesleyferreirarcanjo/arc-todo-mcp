@@ -19,33 +19,14 @@ class ArcTodoClient:
     def __init__(self) -> None:
         self._base_url = settings.arc_todo_api_base_url.rstrip("/")
         self._token = settings.arc_todo_access_token
-        self._username = settings.arc_todo_username
-        self._password = settings.arc_todo_password
 
     async def get_service_bearer_token(self) -> str:
         """Service-account token for startup / no-user-context calls only."""
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            await self._ensure_service_token(client)
-            if not self._token:
-                raise ArcTodoApiError("No service bearer token available")
-            return self._token
-
-    async def _ensure_service_token(self, client: httpx.AsyncClient) -> None:
-        if self._token:
-            return
-        if not self._username or not self._password:
+        if not self._token:
             raise ArcTodoApiError(
-                "Missing credentials: set ARC_TODO_ACCESS_TOKEN or "
-                "ARC_TODO_USERNAME and ARC_TODO_PASSWORD"
+                "Missing ARC_TODO_ACCESS_TOKEN: service-account calls require a pre-issued token"
             )
-        response = await client.post(
-            f"{self._base_url}/auth/login",
-            json={"username": self._username, "password": self._password},
-        )
-        if not response.is_success:
-            await self._raise_api_error(response)
-        data = response.json()
-        self._token = data["access_token"]
+        return self._token
 
     def _auth_headers(self, *, allow_service_account: bool = False) -> dict[str, str]:
         caller = get_caller_token()
